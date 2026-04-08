@@ -24,29 +24,44 @@ export class Flight {
         this.availableSeats = [];
     }
 
-    private generateFlightNumber(): string {}
+    private generateFlightNumber(): string {
+        return "FL-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
 
-    static isSeatAvailable(seatNo: string) {}
-    static reserveSeat(seatNo: string) {}
-    static releaseSeat(seatNo: string) {}
+    isSeatAvailable(seatNo: string) {
+        const seat = this.seats.get(seatNo);
+        return seat ? !seat.isBooked() : false;
+    }
+    reserveSeat(seatNo: string) {
+        const seat = this.seats.get(seatNo);
+        if (seat && !seat.isBooked()) {
+            seat.reserve();
+        }
+    }
+    releaseSeat(seatNo: string) {
+        const seat = this.seats.get(seatNo);
+        if (seat) {
+            seat.release();
+        }
+    }
 
-    getSource() : string {}
+    getSource() : string { return this.source; }
 
-    getDestination() : string {}
+    getDestination() : string { return this.destination; }
 
-    getDepartureTime() : Date {}
+    getDepartureTime() : Date { return this.departureTime; }
 
-    getArrivalTime() : Date {}
+    getArrivalTime() : Date { return this.arrivalTime; }
 
-    getFlightNumber() : string {}
+    getFlightNumber() : string { return this.flightNumber; }
 
-    getAvailabeSeats() : Seat[] {}
-    
+    getAvailabeSeats() : Seat[] { return Array.from(this.seats.values()).filter(seat => !seat.isBooked()); }
 
 }
 
 
 enum FlightStatus {
+    SCHEDULED,
     ON_TIME,
     DELAYED,
     CANCELLED

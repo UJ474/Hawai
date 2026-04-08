@@ -11,7 +11,14 @@ export class Payment {
         this.status = PaymentStatus.PENDING;
     }
 
-    processPayment(): void {}
+    processPayment(): void {
+        const success = true; // Simulating a successful payment
+        if (success) {
+            this.status = PaymentStatus.COMPLETED;
+        } else {
+            this.status = PaymentStatus.FAILED;
+        }
+    }
 
 }
 

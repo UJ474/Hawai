@@ -18,8 +18,17 @@ export class BookingManager {
         return this.instance;
     }
 
-    createBooking(flight: Flight, passenger: Passenger, seat: Seat, price: number) : Booking {}
+    createBooking(flight: Flight, passenger: Passenger, seat: Seat, price: number) : Booking {
+        const booking = new Booking(flight, passenger, seat, price);
+        this.bookings.set(booking.getId(), booking);
+        return booking;
+    }
 
-    cancelBooking(bookingNumber: string) : void {}
+    cancelBooking(bookingNumber: string) : void {
+        const booking = this.bookings.get(bookingNumber);
+        if (booking) {
+            booking.cancel();
+        }
+    }
 
 }

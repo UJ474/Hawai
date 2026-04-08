@@ -1,4 +1,4 @@
-import { Flight } from "./Flights";
+import { Flight } from "./Flight";
 
 export class FlightSearch {
     private readonly flights: Map<string, Flight>;
@@ -7,8 +7,16 @@ export class FlightSearch {
         this.flights = new Map<string, Flight>();
     }
 
-    addFlight(flight: Flight) : void {}
+    addFlight(flight: Flight) : void {
+        this.flights.set(flight.getFlightNumber(), flight);
+    }
 
-    searchFlights(source: string, destination: string, date: Date) : Flight[] {}
+    searchFlights(source: string, destination: string, date: Date) : Flight[] {
+        return Array.from(this.flights.values()).filter(flight => 
+            flight.getSource() === source && 
+            flight.getDestination() === destination && 
+            flight.getDepartureTime().toDateString() === date.toDateString()
+        );
+    }
 
 }
