@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { bookingService } from "../services/BookingService.js";
 import { z } from "zod";
 
 const router = Router();
@@ -20,29 +20,7 @@ router.post("/", async (req, res) => {
     }
     const { flightId, passengerId, seatNumber, price } = parsed.data;
 
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        flightId,
-        seatNumber,
-        status: { not: "CANCELED" },
-      },
-    });
-
-    if (existingBooking) {
-      res.status(409).json({ error: `Seat ${seatNumber} is already booked` });
-      return;
-    }
-
-    const booking = await prisma.booking.create({
-      data: {
-        flightId,
-        passengerId,
-        seatNumber,
-        price,
-        status: "CONFIRMED",
-      },
-      include: { flight: true, passenger: true },
-    });
+    const booking = await bookingService.create(flightId, passengerId, seatNumber, price);
     res.status(201).json(booking);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -52,10 +30,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const bookings = await prisma.booking.findMany({
-      include: { flight: true, passenger: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const bookings = await bookingService.findAll();
     res.json(bookings);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -65,10 +40,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: req.params["id"] },
-      include: { flight: { include: { aircraft: true } }, passenger: true },
-    });
+    const booking = await bookingService.findById(req.params["id"]);
     if (!booking) {
       res.status(404).json({ error: "Booking not found" });
       return;
@@ -82,11 +54,7 @@ router.get("/:id", async (req, res) => {
 
 router.get("/passenger/:passengerId", async (req, res) => {
   try {
-    const bookings = await prisma.booking.findMany({
-      where: { passengerId: req.params["passengerId"] },
-      include: { flight: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const bookings = await bookingService.findByPassengerId(req.params["passengerId"]);
     res.json(bookings);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -96,22 +64,7 @@ router.get("/passenger/:passengerId", async (req, res) => {
 
 router.patch("/:id/cancel", async (req, res) => {
   try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: req.params["id"] },
-    });
-    if (!booking) {
-      res.status(404).json({ error: "Booking not found" });
-      return;
-    }
-    if (booking.status === "CANCELED") {
-      res.status(400).json({ error: "Booking is already canceled" });
-      return;
-    }
-    const updated = await prisma.booking.update({
-      where: { id: req.params["id"] },
-      data: { status: "CANCELED" },
-      include: { flight: true, passenger: true },
-    });
+    const updated = await bookingService.cancel(req.params["id"]);
     res.json(updated);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -121,7 +74,7 @@ router.patch("/:id/cancel", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.booking.delete({ where: { id: req.params["id"] } });
+    await bookingService.delete(req.params["id"]);
     res.status(204).send();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
