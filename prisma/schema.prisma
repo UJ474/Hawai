@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Passenger {
+  id       String    @id @default(uuid())
+  name     String
+  email    String    @unique
+  password String
+  bookings Booking[]
+}
+
+model Aircraft {
+  tailNumber String   @id
+  model      String
+  capacity   Int
+  flights    Flight[]
+}
+
+model Flight {
+  id            String    @id @default(uuid())
+  flightNumber  String    @unique
+  source        String
+  destination   String
+  departureTime DateTime
+  arrivalTime   DateTime
+  aircraftId    String
+  aircraft      Aircraft  @relation(fields: [aircraftId], references: [tailNumber])
+  status        String    @default("SCHEDULED")
+  bookings      Booking[]
+}
+
+model Booking {
+  id          String    @id @default(uuid())
+  flightId    String
+  flight      Flight    @relation(fields: [flightId], references: [id])
+  passengerId String
+  passenger   Passenger @relation(fields: [passengerId], references: [id])
+  seatNumber  String
+  price       Float
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+}
