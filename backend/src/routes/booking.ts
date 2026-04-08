@@ -50,7 +50,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
     const bookings = await prisma.booking.findMany({
       include: { flight: true, passenger: true },

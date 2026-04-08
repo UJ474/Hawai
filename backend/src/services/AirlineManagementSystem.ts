@@ -79,7 +79,6 @@ export class AirlineManagementSystem {
 
     const flight = new Flight(source, destination, departureTime, arrivalTime, aircraft);
 
-    // Auto-generate seats based on aircraft capacity
     const capacity = aircraft.getCapacity();
     for (let i = 1; i <= capacity; i++) {
       const ratio = i / capacity;
@@ -116,7 +115,6 @@ export class AirlineManagementSystem {
     return this.flightSearch.searchFlights(source, destination, departureDate);
   }
 
-  // ── Bookings ──────────────────────────────────────────────────────
 
   bookFlight(
     flightNumber: string,
@@ -148,8 +146,6 @@ export class AirlineManagementSystem {
   getBookingsByPassenger(passengerId: string): Booking[] {
     return this.bookingManager.getBookingsByPassenger(passengerId);
   }
-
-  // ── Payments ──────────────────────────────────────────────────────
 
   processPayment(
     bookingId: string,
