@@ -1,106 +1,116 @@
 import { prisma } from "../db.js";
-import { Aircraft, Flight, FlightStatus, Seat, SeatType } from "../models/index.js";
+import { Flight, FlightStatus, Seat, SeatStatus, SeatType } from "../models/index.js";
 
 export class FlightService {
-  /**
-   * Create a flight — uses the Flight model to:
-   * - generate the flight number
-   * - validate departureTime < arrivalTime (via model semantics)
-   * Then persists to DB via Prisma.
-   */
-  async create(
+  private static instance: FlightService;
+
+  public static getInstance(): FlightService {
+    if (!FlightService.instance) {
+      FlightService.instance = new FlightService();
+    }
+    return FlightService.instance;
+  }
+
+  /** Map a Prisma flight record (with seats) to a Flight domain object */
+  private mapRecord(record: any): Flight {
+    const seats = (record.seats ?? []).map(
+      (s: any) =>
+        new Seat(
+          s.id,
+          s.seatNumber,
+          s.type as SeatType,
+          record.id,
+          s.isBooked ? SeatStatus.BOOKED : SeatStatus.AVAILABLE
+        )
+    );
+    return new Flight(
+      record.id,
+      record.source,
+      record.destination,
+      record.departureTime,
+      record.arrivalTime,
+      record.status as FlightStatus,
+      seats
+    );
+  }
+
+  /** Create a new flight */
+  public async create(
     source: string,
     destination: string,
     departureTime: Date,
     arrivalTime: Date,
     aircraftId: string
-  ) {
-    // Fetch the aircraft from DB first
-    const aircraftRecord = await prisma.aircraft.findUnique({ where: { tailNumber: aircraftId } });
-    if (!aircraftRecord) throw new Error("Aircraft not found");
-
-    // Build model objects
-    const aircraftModel = new Aircraft(
-      aircraftRecord.tailNumber,
-      aircraftRecord.model,
-      aircraftRecord.capacity
-    );
-    const flightModel = new Flight(source, destination, departureTime, arrivalTime, aircraftModel);
-
-    // Auto-populate seats based on aircraft capacity
-    const seatData = [];
-    for (let i = 1; i <= aircraftModel.getCapacity(); i++) {
-      const seatNumber = `${Math.ceil(i / 6)}${String.fromCharCode(64 + ((i - 1) % 6) + 1)}`;
-      const type =
-        i <= Math.floor(aircraftModel.getCapacity() * 0.05)
-          ? SeatType.FIRST_CLASS
-          : i <= Math.floor(aircraftModel.getCapacity() * 0.2)
-          ? SeatType.BUSINESS
-          : i <= Math.floor(aircraftModel.getCapacity() * 0.35)
-          ? SeatType.PREMIUM_ECONOMY
-          : SeatType.ECONOMY;
-      
-      seatData.push({
-        seatNumber,
-        type,
-        isBooked: false,
-      });
-    }
-
-    return prisma.flight.create({
+  ): Promise<Flight> {
+    const flightNumber = `${source.slice(0, 3).toUpperCase()}${destination.slice(0, 3).toUpperCase()}${Date.now()}`;
+    const record = await prisma.flight.create({
       data: {
-        flightNumber: flightModel.getFlightNumber(),
-        source: flightModel.getSource(),
-        destination: flightModel.getDestination(),
-        departureTime: flightModel.getDepartureTime(),
-        arrivalTime: flightModel.getArrivalTime(),
+        flightNumber,
+        source,
+        destination,
+        departureTime,
+        arrivalTime,
+        status: FlightStatus.ON_TIME,
         aircraftId,
-        status: flightModel.getStatus(),
-        seats: {
-          create: seatData,
-        },
       },
-      include: { aircraft: true, seats: true },
+      include: { seats: true },
     });
+    return this.mapRecord(record);
   }
 
-  async findAll(filters?: { source?: string; destination?: string; date?: string }) {
-    return prisma.flight.findMany({
-      where: {
-        source: filters?.source,
-        destination: filters?.destination,
-        departureTime: filters?.date
-          ? {
-              gte: new Date(filters.date),
-              lt: new Date(new Date(filters.date).getTime() + 86_400_000),
-            }
-          : undefined,
-      },
-      include: { aircraft: true, bookings: true },
-    });
+  /** Get all flights, with optional filters */
+  public async findAll(filters?: {
+    source?: string;
+    destination?: string;
+    date?: string;
+  }): Promise<Flight[]> {
+    const where: any = {};
+    if (filters?.source) where.source = filters.source;
+    if (filters?.destination) where.destination = filters.destination;
+    if (filters?.date) {
+      const d = new Date(filters.date);
+      where.departureTime = {
+        gte: new Date(d.setHours(0, 0, 0, 0)),
+        lt: new Date(d.setHours(23, 59, 59, 999)),
+      };
+    }
+    const records = await prisma.flight.findMany({ where, include: { seats: true } });
+    return records.map((r) => this.mapRecord(r));
   }
 
-  async findById(id: string) {
-    return prisma.flight.findUnique({
+  /** Get a single flight by ID */
+  public async findById(id: string): Promise<Flight | null> {
+    const record = await prisma.flight.findUnique({
       where: { id },
-      include: { aircraft: true, bookings: { include: { passenger: true } } },
+      include: { seats: true },
     });
+    return record ? this.mapRecord(record) : null;
   }
 
-  /**
-   * Update flight status — uses FlightStatus enum from the Flight model
-   * to ensure only valid statuses are passed.
-   */
-  async updateStatus(id: string, status: FlightStatus) {
-    return prisma.flight.update({
+  /** Update the status of a flight */
+  public async updateStatus(id: string, status: FlightStatus): Promise<Flight> {
+    const record = await prisma.flight.update({
       where: { id },
       data: { status },
+      include: { seats: true },
     });
+    return this.mapRecord(record);
   }
 
-  async delete(id: string) {
-    return prisma.flight.delete({ where: { id } });
+  /** Delete a flight */
+  public async delete(id: string): Promise<void> {
+    await prisma.flight.delete({ where: { id } });
+  }
+
+  // ── Legacy aliases (kept for backwards compatibility) ─────────────────────
+
+  public async searchFlights(source: string, destination: string, date: Date): Promise<Flight[]> {
+    return this.findAll({ source, destination, date: date.toISOString() });
+  }
+
+  public async getFlightDetails(flightId: string): Promise<Flight | null> {
+    return this.findById(flightId);
   }
 }
 
-export const flightService = new FlightService();
+export const flightService = FlightService.getInstance();

@@ -1,23 +1,19 @@
 export class Passenger {
-  private readonly id: string;
-  private readonly name: string;
-  private readonly email: string;
+  private passengerId: string;
+  private name: string;
+  private email: string;
+  private phone: string;
 
-  constructor(name: string, email: string) {
-    this.id = Math.random().toString(36).substring(2, 9);
+  constructor(passengerId: string, name: string, email: string, phone: string) {
+    this.passengerId = passengerId;
     this.name = name;
     this.email = email;
+    this.phone = phone;
   }
 
-  getId(): string {
-    return this.id;
-  }
-
-  getName(): string {
-    return this.name;
-  }
-
-  getEmail(): string {
-    return this.email;
-  }
+  // Getters
+  public getPassengerId(): string { return this.passengerId; }
+  public getName(): string { return this.name; }
+  public getEmail(): string { return this.email; }
+  public getPhone(): string { return this.phone; }
 }

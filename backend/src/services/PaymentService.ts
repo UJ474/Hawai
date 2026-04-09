@@ -2,85 +2,94 @@ import { prisma } from "../db.js";
 import { Payment, PaymentMethod, PaymentStatus } from "../models/Payment.js";
 
 export class PaymentService {
+  private static instance: PaymentService;
+
+  private constructor() {}
+
+  public static getInstance(): PaymentService {
+    if (!PaymentService.instance) {
+      PaymentService.instance = new PaymentService();
+    }
+    return PaymentService.instance;
+  }
+
   /**
-   * Processes a payment for a booking and handles the transaction.
+   * Process a payment for a booking.
+   * Accepts the method and amount directly (no strategy object needed from the route layer).
    */
-  async processPayment(bookingId: string, method: PaymentMethod, amount: number) {
+  public async processPayment(
+    bookingId: string,
+    method: PaymentMethod,
+    amount: number
+  ): Promise<Payment> {
     return await prisma.$transaction(async (tx) => {
-      // 1. Fetch Booking
       const bookingRecord = await tx.booking.findUnique({
         where: { id: bookingId },
         include: { payment: true },
       });
       if (!bookingRecord) throw new Error("Booking not found");
 
-      if (bookingRecord.payment && bookingRecord.payment.status === PaymentStatus.COMPLETED) {
+      if (
+        bookingRecord.payment &&
+        bookingRecord.payment.status === PaymentStatus.COMPLETED
+      ) {
         throw new Error("Booking is already paid for");
       }
 
-      // Generate a temporary PaymentID for the OOP model
-      const tempPaymentId = Math.random().toString(36).substring(2, 11).toUpperCase();
-      
-      // 2. Delegate to the OOP Payment Model logic
-      const paymentModel = new Payment(tempPaymentId, method, amount, bookingId);
-      paymentModel.processPayment();
+      const paymentId = Math.random().toString(36).substring(2, 11).toUpperCase();
 
-      if (paymentModel.getStatus() !== PaymentStatus.COMPLETED) {
-        throw new Error("Payment processing failed");
-      }
+      const paymentModel = new Payment(
+        paymentId,
+        bookingId,
+        amount,
+        PaymentStatus.COMPLETED,
+        method
+      );
 
-      // 3. Persist the Payment record
-      const savedPayment = await tx.payment.upsert({
+      await tx.payment.upsert({
         where: { bookingId },
         update: {
-          paymentMethod: paymentModel.getPaymentMethod(),
+          paymentMethod: paymentModel.getMethod(),
           amount: paymentModel.getAmount(),
-          status: paymentModel.getStatus(),
+          status: PaymentStatus.COMPLETED,
         },
         create: {
-          paymentMethod: paymentModel.getPaymentMethod(),
+          id: paymentModel.getPaymentId(),
+          paymentMethod: paymentModel.getMethod(),
           amount: paymentModel.getAmount(),
-          status: paymentModel.getStatus(),
+          status: PaymentStatus.COMPLETED,
           bookingId: bookingId,
         },
       });
 
-      return savedPayment;
+      return paymentModel;
     });
   }
 
-  async refundPayment(paymentId: string) {
-    const paymentRecord = await prisma.payment.findUnique({ where: { id: paymentId } });
-    if (!paymentRecord) throw new Error("Payment not found");
-
-    // Load DB state into the model
-    const paymentModel = new Payment(
-      paymentRecord.id,
-      paymentRecord.paymentMethod as PaymentMethod,
-      paymentRecord.amount,
-      paymentRecord.bookingId
-    );
-    
-    // For refund to trigger properly, we must override the status as it defaults to PENDING
-    if (paymentRecord.status === PaymentStatus.COMPLETED) {
-      paymentModel.processPayment(); // Forces it to COMPLETED so refund works
-    }
-
-    paymentModel.refund();
-
-    if (paymentModel.getStatus() !== PaymentStatus.REFUNDED) {
-      throw new Error("Refund failed or payment was not eligible for refund");
-    }
-
-    return prisma.payment.update({
+  /**
+   * Refund a payment by setting its status to REFUNDED.
+   */
+  public async refundPayment(paymentId: string): Promise<Payment> {
+    const record = await prisma.payment.update({
       where: { id: paymentId },
-      data: { status: paymentModel.getStatus() },
+      data: { status: PaymentStatus.REFUNDED },
     });
+
+    return new Payment(
+      record.id,
+      record.bookingId,
+      record.amount,
+      record.status as PaymentStatus,
+      record.paymentMethod as PaymentMethod
+    );
   }
 
-  async getValidMethods() {
+  /**
+   * Return the list of valid payment methods supported by the system.
+   */
+  public getValidMethods(): PaymentMethod[] {
     return Object.values(PaymentMethod);
   }
 }
 
-export const paymentService = new PaymentService();
+export const paymentService = PaymentService.getInstance();

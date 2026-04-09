@@ -1,129 +1,135 @@
 import { prisma } from "../db.js";
-import { Booking, BookingStatus, Flight, Aircraft, Passenger, Seat, SeatType } from "../models/index.js";
+import { Booking, BookingStatus } from "../models/index.js";
 
 export class BookingService {
+  private static instance: BookingService;
+
+  private constructor() {}
+
+  public static getInstance(): BookingService {
+    if (!BookingService.instance) {
+      BookingService.instance = new BookingService();
+    }
+    return BookingService.instance;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private mapRecord(record: {
+    id: string;
+    flightId: string;
+    passengerId: string;
+    seatId: string;
+    status: string;
+  }): Booking {
+    return new Booking(
+      record.id,
+      record.flightId,
+      record.passengerId,
+      record.seatId,
+      record.status as BookingStatus
+    );
+  }
+
+  // ── Public API (used by routes) ────────────────────────────────────────────
+
   /**
-   * Create a new booking
-   *
-   * Uses Models:
-   * - Flight, Aircraft, Passenger models to instantiate the Booking model
-   * - Booking model generateId(), initial Pending state, and confirms it.
+   * Create a new booking (route-facing alias with flat args).
+   * passengerId here is the DB id of an existing passenger.
    */
-  async create(flightId: string, passengerId: string, seatNumber: string, price: number) {
-    // We use a Prisma Transaction to safely book the seat and eliminate race conditions
+  public async create(
+    flightId: string,
+    passengerId: string,
+    seatId: string,
+    _price: number // kept for schema compatibility, stored on DB record
+  ): Promise<Booking> {
     return await prisma.$transaction(async (tx) => {
-      // 1. Fetch Flight and Passenger
-      const flightRecord = await tx.flight.findUnique({
-        where: { id: flightId },
-        include: { aircraft: true },
-      });
-      if (!flightRecord) throw new Error("Flight not found");
+      // Ensure seat exists and is free
+      const seatRecord = await tx.seat.findUnique({ where: { id: seatId } });
+      if (!seatRecord) throw new Error("Seat does not exist.");
+      if (seatRecord.isBooked) throw new Error("Seat is already booked.");
 
-      const passengerRecord = await tx.passenger.findUnique({
-        where: { id: passengerId },
-      });
-      if (!passengerRecord) throw new Error("Passenger not found");
+      // Lock the seat
+      await tx.seat.update({ where: { id: seatId }, data: { isBooked: true } });
 
-      // 2. Locate the specific Seat instance to lock it
-      const seatRecord = await tx.seat.findUnique({
-        where: { flightId_seatNumber: { flightId, seatNumber } }
-      });
-      if (!seatRecord) throw new Error(`Seat ${seatNumber} does not exist on this flight.`);
-      if (seatRecord.isBooked) throw new Error(`Seat ${seatNumber} is already booked!`);
-
-      // 3. Mark the seat as booked
-      await tx.seat.update({
-        where: { id: seatRecord.id },
-        data: { isBooked: true },
-      });
-
-      // 4. Map OOP paradigms for tracking (even if we save directly)
-      const aircraftModel = new Aircraft(
-        flightRecord.aircraft.tailNumber,
-        flightRecord.aircraft.model,
-        flightRecord.aircraft.capacity
-      );
-      const flightModel = new Flight(
-        flightRecord.source,
-        flightRecord.destination,
-        flightRecord.departureTime,
-        flightRecord.arrivalTime,
-        aircraftModel
-      );
-      const passengerModel = new Passenger(passengerRecord.name, passengerRecord.email);
-      // Constructing OOP Seat using DB state
-      // Provide valid cast or matching SeatType
-      const seatModel = new Seat(seatRecord.seatNumber, seatRecord.type as SeatType);
-
-      // Book it via OOP model validation
-      const bookingModel = new Booking(flightModel, passengerModel, seatModel, price);
-      bookingModel.confirm();
-
-      // 5. Persist the Booking relation mapping the exact seat ID
-      return tx.booking.create({
+      // Persist booking
+      const record = await tx.booking.create({
         data: {
           flightId,
           passengerId,
-          seatId: seatRecord.id,
-          price: bookingModel.getPrice(),
-          status: bookingModel.getStatus(),
+          seatId,
+          status: BookingStatus.CONFIRMED,
+          price: _price,
         },
-        include: { flight: true, passenger: true, seat: true },
       });
+
+      return this.mapRecord(record);
     });
   }
 
-  async findAll() {
-    return prisma.booking.findMany({
-      include: { flight: true, passenger: true, seat: true },
-      orderBy: { createdAt: "desc" },
-    });
+  /** Return all bookings. */
+  public async findAll(): Promise<Booking[]> {
+    const records = await prisma.booking.findMany();
+    return records.map((r) => this.mapRecord(r));
   }
 
-  async findById(id: string) {
-    return prisma.booking.findUnique({
-      where: { id },
-      include: { flight: { include: { aircraft: true } }, passenger: true, seat: true },
-    });
+  /** Find a single booking by its ID. */
+  public async findById(id: string): Promise<Booking | null> {
+    const record = await prisma.booking.findUnique({ where: { id } });
+    return record ? this.mapRecord(record) : null;
   }
 
-  async findByPassengerId(passengerId: string) {
-    return prisma.booking.findMany({
-      where: { passengerId },
-      include: { flight: true, seat: true },
-      orderBy: { createdAt: "desc" },
-    });
+  /** Find all bookings for a specific passenger. */
+  public async findByPassengerId(passengerId: string): Promise<Booking[]> {
+    const records = await prisma.booking.findMany({ where: { passengerId } });
+    return records.map((r) => this.mapRecord(r));
   }
 
-  /**
-   * Cancels a booking, freeing the associated seat in a transaction
-   */
-  async cancel(id: string) {
+  /** Cancel a booking and free its seat. */
+  public async cancel(bookingId: string): Promise<Booking> {
     return await prisma.$transaction(async (tx) => {
-      const bookingRecord = await tx.booking.findUnique({ where: { id } });
-      if (!bookingRecord) throw new Error("Booking not found");
-
-      if (bookingRecord.status === BookingStatus.CANCELED) {
+      const record = await tx.booking.findUnique({ where: { id: bookingId } });
+      if (!record) throw new Error("Booking not found");
+      if (record.status === BookingStatus.CANCELED) {
         throw new Error("Booking is already canceled");
       }
 
-      // Mark the seat as available again
+      // Free the seat
       await tx.seat.update({
-        where: { id: bookingRecord.seatId },
+        where: { id: record.seatId },
         data: { isBooked: false },
       });
 
-      return tx.booking.update({
-        where: { id },
+      // Update status
+      const updated = await tx.booking.update({
+        where: { id: bookingId },
         data: { status: BookingStatus.CANCELED },
-        include: { flight: true, passenger: true, seat: true },
       });
+
+      return this.mapRecord(updated);
     });
   }
 
-  async delete(id: string) {
-    return prisma.booking.delete({ where: { id } });
+  /** Permanently delete a booking record. */
+  public async delete(id: string): Promise<void> {
+    await prisma.booking.delete({ where: { id } });
+  }
+
+  // ── Legacy methods (used internally / backwards compat) ───────────────────
+
+  /** @deprecated Use create() instead. */
+  public async createBooking(
+    flightId: string,
+    passengerId: string,
+    seatId: string
+  ): Promise<Booking> {
+    return this.create(flightId, passengerId, seatId, 0);
+  }
+
+  /** @deprecated Use cancel() instead. */
+  public async cancelBooking(bookingId: string): Promise<void> {
+    await this.cancel(bookingId);
   }
 }
 
-export const bookingService = new BookingService();
+export const bookingService = BookingService.getInstance();
