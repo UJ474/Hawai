@@ -1,46 +1,48 @@
 export enum SeatType {
   ECONOMY = "ECONOMY",
-  PREMIUM_ECONOMY = "PREMIUM_ECONOMY",
   BUSINESS = "BUSINESS",
-  FIRST_CLASS = "FIRST_CLASS",
 }
 
 export enum SeatStatus {
   AVAILABLE = "AVAILABLE",
-  RESERVED = "RESERVED",
-  OCCUPIED = "OCCUPIED",
+  BOOKED = "BOOKED",
 }
 
 export class Seat {
-  private readonly seatNumber: string;
-  private readonly type: SeatType;
-  private status: SeatStatus;
+  private seatId: string;
+  public seatNumber: string;
+  private seatType: SeatType;
+  public status: SeatStatus;
+  private flightId: string;
 
-  constructor(seatNumber: string, type: SeatType) {
+  constructor(
+    seatId: string,
+    seatNumber: string,
+    seatType: SeatType,
+    flightId: string,
+    status: SeatStatus = SeatStatus.AVAILABLE
+  ) {
+    this.seatId = seatId;
     this.seatNumber = seatNumber;
-    this.type = type;
-    this.status = SeatStatus.AVAILABLE;
+    this.seatType = seatType;
+    this.flightId = flightId;
+    this.status = status;
   }
 
-  getSeatNumber(): string {
-    return this.seatNumber;
-  }
-
-  getType(): SeatType {
-    return this.type;
-  }
-
-  reserve(): void {
+  public book(): void {
     if (this.status === SeatStatus.AVAILABLE) {
-      this.status = SeatStatus.RESERVED;
+      this.status = SeatStatus.BOOKED;
     }
   }
 
-  release(): void {
-    this.status = SeatStatus.AVAILABLE;
+  public release(): void {
+    if (this.status === SeatStatus.BOOKED) {
+      this.status = SeatStatus.AVAILABLE;
+    }
   }
 
-  isBooked(): boolean {
-    return this.status !== SeatStatus.AVAILABLE;
-  }
+  // Getters
+  public getSeatId(): string { return this.seatId; }
+  public getSeatType(): SeatType { return this.seatType; }
+  public getFlightId(): string { return this.flightId; }
 }

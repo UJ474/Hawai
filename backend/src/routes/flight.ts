@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { flightService } from "../services/FlightService.js";
 import { z } from "zod";
 
 const router = Router();
@@ -31,20 +31,13 @@ router.post("/", async (req, res) => {
     }
     const { source, destination, departureTime, arrivalTime, aircraftId } = parsed.data;
 
-    const flightNumber = "FL-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const flight = await prisma.flight.create({
-      data: {
-        flightNumber,
-        source,
-        destination,
-        departureTime: new Date(departureTime),
-        arrivalTime: new Date(arrivalTime),
-        aircraftId,
-        status: "SCHEDULED",
-      },
-      include: { aircraft: true },
-    });
+    const flight = await flightService.create(
+      source,
+      destination,
+      new Date(departureTime),
+      new Date(arrivalTime),
+      aircraftId
+    );
     res.status(201).json(flight);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -61,17 +54,7 @@ router.get("/", async (req, res) => {
     }
     const { source, destination, date } = parsed.data;
 
-    const flights = await prisma.flight.findMany({
-      where: {
-        source,
-        destination,
-        departureTime: date ? {
-          gte: new Date(date),
-          lt: new Date(new Date(date).getTime() + 86_400_000),
-        } : undefined,
-      },
-      include: { aircraft: true, bookings: true },
-    });
+    const flights = await flightService.findAll({ source, destination, date });
     res.json(flights);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -81,10 +64,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const flight = await prisma.flight.findUnique({
-      where: { id: req.params["id"] },
-      include: { aircraft: true, bookings: { include: { passenger: true } } },
-    });
+    const flight = await flightService.findById(req.params["id"]);
     if (!flight) {
       res.status(404).json({ error: "Flight not found" });
       return;
@@ -105,10 +85,7 @@ router.patch("/:id/status", async (req, res) => {
     }
     const { status } = parsed.data;
     
-    const flight = await prisma.flight.update({
-      where: { id: req.params["id"] },
-      data: { status },
-    });
+    const flight = await flightService.updateStatus(req.params["id"], status as any);
     res.json(flight);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -118,7 +95,7 @@ router.patch("/:id/status", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.flight.delete({ where: { id: req.params["id"] } });
+    await flightService.delete(req.params["id"]);
     res.status(204).send();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

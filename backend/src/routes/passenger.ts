@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { passengerService } from "../services/PassengerService.js";
 import { z } from "zod";
 
 const router = Router();
@@ -23,13 +23,7 @@ router.post("/", async (req, res) => {
     }
     const { name, email } = parsed.data;
 
-    const passenger = await prisma.passenger.create({ 
-      data: { 
-        name, 
-        email,
-        password: "default-password"
-      } 
-    });
+    const passenger = await passengerService.create(name, email, "default-password");
     res.status(201).json(passenger);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -37,11 +31,9 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const passengers = await prisma.passenger.findMany({
-      include: { bookings: true },
-    });
+    const passengers = await passengerService.findAll();
     res.json(passengers);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -51,10 +43,7 @@ router.get("/", async (_req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const passenger = await prisma.passenger.findUnique({
-      where: { id: req.params["id"] },
-      include: { bookings: true },
-    });
+    const passenger = await passengerService.findById(req.params["id"]);
     if (!passenger) {
       res.status(404).json({ error: "Passenger not found" });
       return;
@@ -75,13 +64,7 @@ router.put("/:id", async (req, res) => {
     }
     const { name, email } = parsed.data;
 
-    const passenger = await prisma.passenger.update({
-      where: { id: req.params["id"] },
-      data: { 
-        ...(name !== undefined && { name }), 
-        ...(email !== undefined && { email }) 
-      },
-    });
+    const passenger = await passengerService.update(req.params["id"], { name, email });
     res.json(passenger);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -91,7 +74,7 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    await prisma.passenger.delete({ where: { id: req.params["id"] } });
+    await passengerService.delete(req.params["id"]);
     res.status(204).send();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
+import { aircraftService } from "../services/AircraftService.js";
 import { z } from "zod";
 
 const router = Router();
@@ -24,9 +24,7 @@ router.post("/", async (req, res) => {
     }
     const { tailNumber, model, capacity } = parsed.data;
 
-    const aircraft = await prisma.aircraft.create({
-      data: { tailNumber, model, capacity },
-    });
+    const aircraft = await aircraftService.create(tailNumber, model, capacity);
     res.status(201).json(aircraft);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -36,9 +34,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (_req, res) => {
   try {
-    const aircrafts = await prisma.aircraft.findMany({
-      include: { flights: true },
-    });
+    const aircrafts = await aircraftService.findAll();
     res.json(aircrafts);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -48,10 +44,7 @@ router.get("/", async (_req, res) => {
 
 router.get("/:tailNumber", async (req, res) => {
   try {
-    const aircraft = await prisma.aircraft.findUnique({
-      where: { tailNumber: req.params["tailNumber"] },
-      include: { flights: true },
-    });
+    const aircraft = await aircraftService.findByTailNumber(req.params.tailNumber);
     if (!aircraft) {
       res.status(404).json({ error: "Aircraft not found" });
       return;
@@ -72,12 +65,9 @@ router.put("/:tailNumber", async (req, res) => {
     }
     const { model, capacity } = parsed.data;
 
-    const aircraft = await prisma.aircraft.update({
-      where: { tailNumber: req.params["tailNumber"] },
-      data: {
-        ...(model !== undefined && { model }),
-        ...(capacity !== undefined && { capacity }),
-      },
+    const aircraft = await aircraftService.update(req.params.tailNumber, {
+      model,
+      capacity,
     });
     res.json(aircraft);
   } catch (err: unknown) {
@@ -88,7 +78,7 @@ router.put("/:tailNumber", async (req, res) => {
 
 router.delete("/:tailNumber", async (req, res) => {
   try {
-    await prisma.aircraft.delete({ where: { tailNumber: req.params["tailNumber"] } });
+    await aircraftService.delete(req.params.tailNumber);
     res.status(204).send();
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

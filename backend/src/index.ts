@@ -4,6 +4,7 @@ import passengerRoutes from "./routes/passenger.js";
 import aircraftRoutes from "./routes/aircraft.js";
 import flightRoutes from "./routes/flight.js";
 import bookingRoutes from "./routes/booking.js";
+import paymentRoutes from "./routes/payment.js";
 import authRoutes from "./routes/auth.js";
 import { authenticateToken } from "./middleware/auth.js";
 
@@ -23,6 +24,7 @@ app.use("/api/passengers", authenticateToken, passengerRoutes); // Protected map
 app.use("/api/aircrafts", aircraftRoutes);
 app.use("/api/flights", flightRoutes);
 app.use("/api/bookings", authenticateToken, bookingRoutes); // Protected mapping
+app.use("/api/payments", authenticateToken, paymentRoutes); // Protected mapping
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });

@@ -6,62 +6,60 @@ export enum PaymentStatus {
 }
 
 export enum PaymentMethod {
-  CREDIT_CARD = "CREDIT_CARD",
-  DEBIT_CARD = "DEBIT_CARD",
-  NET_BANKING = "NET_BANKING",
   UPI = "UPI",
-  WALLET = "WALLET",
+  CARD = "CARD",
+}
+
+export interface PaymentStrategy {
+  pay(amount: number): boolean;
+}
+
+export class UPIPayment implements PaymentStrategy {
+  public pay(amount: number): boolean {
+    // UPI payment logic
+    return true;
+  }
+}
+
+export class CardPayment implements PaymentStrategy {
+  public pay(amount: number): boolean {
+    // Card payment logic
+    return true;
+  }
 }
 
 export class Payment {
-  private readonly paymentId: string;
-  private readonly paymentMethod: PaymentMethod;
-  private readonly amount: number;
-  private readonly bookingId: string;
+  private paymentId: string;
+  private bookingId: string;
+  private amount: number;
   private status: PaymentStatus;
+  private method: PaymentMethod;
 
   constructor(
     paymentId: string,
-    paymentMethod: PaymentMethod,
+    bookingId: string,
     amount: number,
-    bookingId: string
+    status: PaymentStatus,
+    method: PaymentMethod
   ) {
     this.paymentId = paymentId;
-    this.paymentMethod = paymentMethod;
-    this.amount = amount;
     this.bookingId = bookingId;
-    this.status = PaymentStatus.PENDING;
+    this.amount = amount;
+    this.status = status;
+    this.method = method;
   }
 
-  getPaymentId(): string {
-    return this.paymentId;
+  public processPayment(): boolean {
+    // Basic implementation since processPayment delegates to strategy in Service
+    // In actual implementation it might use strategy internally if passed here,
+    // but the diagram shows PaymentService doing: processPayment(bookingId, strategy)
+    return true;
   }
 
-  getPaymentMethod(): PaymentMethod {
-    return this.paymentMethod;
-  }
-
-  getAmount(): number {
-    return this.amount;
-  }
-
-  getBookingId(): string {
-    return this.bookingId;
-  }
-
-  getStatus(): PaymentStatus {
-    return this.status;
-  }
-
-  processPayment(): void {
-    // Simulates gateway call — replace with real integration as needed
-    const success = true;
-    this.status = success ? PaymentStatus.COMPLETED : PaymentStatus.FAILED;
-  }
-
-  refund(): void {
-    if (this.status === PaymentStatus.COMPLETED) {
-      this.status = PaymentStatus.REFUNDED;
-    }
-  }
+  // Getters
+  public getPaymentId(): string { return this.paymentId; }
+  public getBookingId(): string { return this.bookingId; }
+  public getAmount(): number { return this.amount; }
+  public getStatus(): PaymentStatus { return this.status; }
+  public getMethod(): PaymentMethod { return this.method; }
 }

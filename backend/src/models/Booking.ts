@@ -5,50 +5,39 @@ export enum BookingStatus {
   EXPIRED = "EXPIRED",
 }
 
-import { Flight } from "./Flight.js";
-import { Passenger } from "./Passenger.js";
-import { Seat } from "./Seat.js";
-
 export class Booking {
-  private readonly id: string;
-  private readonly flight: Flight;
-  private readonly passenger: Passenger;
-  private readonly seat: Seat;
-  private readonly price: number;
+  private bookingId: string;
+  private flightId: string;
+  private passengerId: string;
+  private seatId: string;
   private status: BookingStatus;
-  private readonly createdAt: Date;
 
-  constructor(flight: Flight, passenger: Passenger, seat: Seat, price: number) {
-    this.id = this.generateId();
-    this.flight = flight;
-    this.passenger = passenger;
-    this.seat = seat;
-    this.price = price;
-    this.status = BookingStatus.PENDING;
-    this.createdAt = new Date();
+  constructor(
+    bookingId: string,
+    flightId: string,
+    passengerId: string,
+    seatId: string,
+    status: BookingStatus
+  ) {
+    this.bookingId = bookingId;
+    this.flightId = flightId;
+    this.passengerId = passengerId;
+    this.seatId = seatId;
+    this.status = status;
   }
 
-  private generateId(): string {
-    return Math.random().toString(36).substring(2, 15);
-  }
-
-  getId(): string           { return this.id; }
-  getFlight(): Flight       { return this.flight; }
-  getPassenger(): Passenger { return this.passenger; }
-  getSeat(): Seat           { return this.seat; }
-  getPrice(): number        { return this.price; }
-  getStatus(): BookingStatus{ return this.status; }
-  getCreatedAt(): Date      { return this.createdAt; }
-
-  confirm(): void {
+  public confirmBooking(): void {
     this.status = BookingStatus.CONFIRMED;
   }
 
-  cancel(): void {
+  public cancelBooking(): void {
     this.status = BookingStatus.CANCELED;
   }
 
-  expire(): void {
-    this.status = BookingStatus.EXPIRED;
-  }
+  // Getters
+  public getBookingId(): string { return this.bookingId; }
+  public getFlightId(): string { return this.flightId; }
+  public getPassengerId(): string { return this.passengerId; }
+  public getSeatId(): string { return this.seatId; }
+  public getStatus(): BookingStatus { return this.status; }
 }

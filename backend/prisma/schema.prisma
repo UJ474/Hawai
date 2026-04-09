@@ -31,7 +31,20 @@ model Flight {
   aircraftId    String
   aircraft      Aircraft  @relation(fields: [aircraftId], references: [tailNumber])
   status        String    @default("SCHEDULED")
+  seats         Seat[]
   bookings      Booking[]
+}
+
+model Seat {
+  id         String    @id @default(uuid())
+  seatNumber String
+  type       String
+  isBooked   Boolean   @default(false)
+  flightId   String
+  flight     Flight    @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+
+  @@unique([flightId, seatNumber])
 }
 
 model Booking {
@@ -40,8 +53,20 @@ model Booking {
   flight      Flight    @relation(fields: [flightId], references: [id])
   passengerId String
   passenger   Passenger @relation(fields: [passengerId], references: [id])
-  seatNumber  String
+  seatId      String
+  seat        Seat      @relation(fields: [seatId], references: [id])
   price       Float
   status      String    @default("PENDING")
+  payment     Payment?
   createdAt   DateTime  @default(now())
+}
+
+model Payment {
+  id            String    @id @default(uuid())
+  paymentMethod String
+  amount        Float
+  bookingId     String    @unique
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
 }

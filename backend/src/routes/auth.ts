@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { prisma } from "../db.js";
+import { passengerService } from "../services/PassengerService.js";
 import { z } from "zod";
 
 const router = Router();
@@ -30,21 +30,13 @@ router.post("/signup", async (req: Request, res: Response): Promise<void> => {
     }
     const { name, email, password } = parsed.data;
 
-    const existingUser = await prisma.passenger.findUnique({ where: { email } });
+    const existingUser = await passengerService.findByEmail(email);
     if (existingUser) {
       res.status(409).json({ error: "Email is already in use" });
       return;
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const passenger = await prisma.passenger.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
-    });
+    const passenger = await passengerService.create(name, email, password);
 
     const { password: _, ...userWithoutPassword } = passenger;
     res.status(201).json({ message: "User registered successfully", user: userWithoutPassword });
@@ -63,7 +55,7 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
     }
     const { email, password } = parsed.data;
 
-    const passenger = await prisma.passenger.findUnique({ where: { email } });
+    const passenger = await passengerService.findByEmail(email);
     if (!passenger) {
       res.status(401).json({ error: "Invalid email or password" });
       return;
