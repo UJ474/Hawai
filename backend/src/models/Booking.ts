@@ -34,7 +34,6 @@ export class Booking {
     this.status = BookingStatus.CANCELED;
   }
 
-  // Getters
   public getBookingId(): string { return this.bookingId; }
   public getFlightId(): string { return this.flightId; }
   public getPassengerId(): string { return this.passengerId; }

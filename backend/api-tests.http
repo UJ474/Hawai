@@ -1,0 +1,164 @@
+@baseUrl = http://localhost:3000/api
+@authToken = {{login.response.body.token}}
+
+### ========================================
+### 1. HEALTH CHECK
+### ========================================
+
+GET http://localhost:3000/health
+Accept: application/json
+
+
+### ========================================
+### 2. AUTHENTICATION & PASSENGERS
+### ========================================
+
+### Signup User
+# @name signup
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "johndoe@example.com",
+  "password": "password123"
+}
+
+###
+
+### Login User
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "johndoe@example.com",
+  "password": "password123"
+}
+
+###
+
+### Get All Passengers (Protected)
+GET {{baseUrl}}/passengers
+Authorization: Bearer {{authToken}}
+
+
+### ========================================
+### 3. AIRCRAFTS (Public by default in code)
+### ========================================
+
+### Create Aircraft
+# @name createAircraft
+POST {{baseUrl}}/aircrafts
+Content-Type: application/json
+
+{
+  "tailNumber": "N12345",
+  "model": "Boeing 737",
+  "capacity": 150
+}
+
+###
+
+### Get All Aircrafts
+GET {{baseUrl}}/aircrafts
+
+###
+
+### Get Aircraft by Tail Number
+GET {{baseUrl}}/aircrafts/N12345
+
+###
+
+### Update Aircraft
+PUT {{baseUrl}}/aircrafts/N12345
+Content-Type: application/json
+
+{
+  "model": "Boeing 737 MAX",
+  "capacity": 160
+}
+
+### ========================================
+### 4. FLIGHTS (Public)
+### ========================================
+
+### Create a Flight
+# @name createFlight
+POST {{baseUrl}}/flights
+Content-Type: application/json
+
+{
+  "flightNumber": "HAW101",
+  "origin": "JFK",
+  "destination": "LAX",
+  "departureTime": "2026-12-01T10:00:00Z",
+  "arrivalTime": "2026-12-01T13:30:00Z",
+  "status": "SCHEDULED",
+  "aircraftTailNumber": "N12345"
+}
+
+###
+
+### Get All Flights
+GET {{baseUrl}}/flights
+
+###
+
+### Update Flight Status
+PATCH {{baseUrl}}/flights/HAW101/status
+Content-Type: application/json
+
+{
+  "status": "DELAYED"
+}
+
+### ========================================
+### 5. BOOKINGS (Protected)
+### ========================================
+
+### Create Booking
+# @name createBooking
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "flightId": "HAW101",
+  "passengerId": "{{login.response.body.user.id}}", 
+  "seatNumber": "12A"
+}
+
+###
+
+### Get All Bookings
+GET {{baseUrl}}/bookings
+Authorization: Bearer {{authToken}}
+
+###
+
+### Cancel Booking (Assume ID from above or replace 1 with actual UUID)
+PATCH {{baseUrl}}/bookings/1/cancel
+Authorization: Bearer {{authToken}}
+
+
+### ========================================
+### 6. PAYMENTS (Protected)
+### ========================================
+
+### Process Payment
+POST {{baseUrl}}/payments
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "bookingId": "1", 
+  "amount": 250.00,
+  "method": "CREDIT_CARD"
+}
+
+###
+
+### Get Payment Methods
+GET {{baseUrl}}/payments/methods
+Authorization: Bearer {{authToken}}
