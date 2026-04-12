@@ -1,2 +1,2 @@
 ### HAWAI
-<img width="2353" height="1323" alt="airlinemanagementsystem-class-diagram" src="https://github.com/user-attachments/assets/632187fc-396d-4a3c-881e-a3c47d257962" />
+![WhatsApp Image 2026-04-12 at 22 54 27](https://github.com/user-attachments/assets/ab57b153-f2f0-44af-80d5-dc45b87dc634)
