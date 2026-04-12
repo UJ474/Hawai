@@ -53,7 +53,6 @@ export class Flight {
     }
   }
 
-  // Getters for properties mapped to DB by Prisma
   public getFlightId(): string { return this.flightId; }
   public getSource(): string { return this.source; }
   public getDestination(): string { return this.destination; }

@@ -1,6 +1,7 @@
 export enum SeatType {
   ECONOMY = "ECONOMY",
   BUSINESS = "BUSINESS",
+  FIRST_CLASS = "FIRST_CLASS",
 }
 
 export enum SeatStatus {
@@ -41,7 +42,6 @@ export class Seat {
     }
   }
 
-  // Getters
   public getSeatId(): string { return this.seatId; }
   public getSeatType(): SeatType { return this.seatType; }
   public getFlightId(): string { return this.flightId; }
