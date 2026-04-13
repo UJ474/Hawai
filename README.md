@@ -130,12 +130,16 @@ Key design decisions:
 |--------|----------|---------------|
 | POST | `/api/auth/signup` | No |
 | POST | `/api/auth/login` | No |
-| GET | `/api/flights` | No |
-| GET | `/api/flights/:id/seats` | No |
+| POST | `/api/passengers` | Yes |
+| PUT | `/api/passengers/:id` | Yes |
+| POST | `/api/aircrafts` | No |
+| PUT | `/api/aircrafts/:id` | No |
+| POST | `/api/flights` | No |
+| PATCH | `/api/flights/:id/status` | No |
 | POST | `/api/bookings` | Yes |
-| GET | `/api/bookings` | Yes |
-| DELETE | `/api/bookings/:id` | Yes |
+| PATCH | `/api/bookings/:id/cancel` | Yes |
 | POST | `/api/payments` | Yes |
+| POST | `/api/payments/:id/refund` | Yes |
 
 ---
 
