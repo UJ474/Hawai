@@ -7,13 +7,12 @@ import bookingRoutes from "./routes/booking.js";
 import paymentRoutes from "./routes/payment.js";
 import authRoutes from "./routes/auth.js";
 import { authenticateToken } from "./middleware/auth.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 const PORT = process.env["PORT"] ?? 3000;
 
-
 app.use(express.json());
-
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -30,17 +29,8 @@ app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-app.use(
-  (
-    err: unknown,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    const message = err instanceof Error ? err.message : "Internal server error";
-    res.status(500).json({ error: message });
-  }
-);
+// Centralized Error Handler
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`✈  Airline Management API running on http://localhost:${PORT}`);
