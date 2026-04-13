@@ -68,59 +68,229 @@ Hawai/
 
 ## OOP Design
 
-**Encapsulation** — model classes (Flight, Booking, Seat) keep fields private and expose them through getters, hiding internal state from the service layer.
+### Encapsulation
 
-**Abstraction** — services expose clean method signatures (e.g. `bookFlight`, `cancelBooking`) and hide all Prisma query details behind them.
+Model classes keep their fields private and expose them only through getters. The service layer never touches raw fields directly.
 
-**Polymorphism** — the `PaymentStrategy` interface is implemented by `UPIPayment` and `CardPayment`. The payment service works against the interface, not the concrete class.
+```
+Flight
+──────────────────────────────────────
+- flightId: String        (private)
+- source: String          (private)
+- destination: String     (private)
+- departureTime: DateTime (private)
+- arrivalTime: DateTime   (private)
+- status: FlightStatus    (private)
+- seats: List<Seat>       (private)
+──────────────────────────────────────
++ getFlightId()
++ getSource()
++ getDestination()
++ getDepartureTime()
++ getArrivalTime()
++ getStatus()
++ getSeats()
+```
 
-**Composition over inheritance** — `Booking` holds references to `Flight`, `Seat`, `Passenger`, and `Payment` rather than extending any of them.
+Same pattern applies to `Booking`, `Seat`, `Passenger`, and `Payment` — fields are never accessed directly from outside the class.
+
+---
+
+### Abstraction
+
+Services hide all database and business logic complexity behind clean method signatures. The caller only needs to know *what* a method does, not *how*.
+
+```
+FlightService
+──────────────────────────────────────────────────────────
++ searchFlights(source, destination, date) → List<Flight>
++ getFlightDetails(flightId) → Flight
+  │
+  └── internally: Prisma queries, filtering, mapping
+
+BookingService
+──────────────────────────────────────────────────────────
++ createBooking(flightId, passenger, seatId) → Booking
++ cancelBooking(bookingId) → void
+  │
+  └── internally: seat availability check, payment trigger,
+      seat reservation, status updates
+```
+
+---
+
+### Polymorphism
+
+`PaymentStrategy` is an interface. `PaymentService` calls `pay(amount)` on whichever strategy is passed in — it does not know or care whether it is UPI or Card.
+
+```
+<<interface>> PaymentStrategy
+──────────────────────────────
++ pay(amount: double): boolean
+        ▲                ▲
+        │                │
+  UPIPayment         CardPayment
+  ─────────────      ─────────────
+  + pay(amount)      + pay(amount)
+    → calls UPI        → calls card
+      gateway            gateway
+
+PaymentService.processPayment(bookingId, strategy)
+  └── strategy.pay(amount)   ← works for both
+```
+
+Adding a new method (e.g. `NetBankingPayment`) requires only a new class implementing the interface. `PaymentService` needs zero changes.
+
+---
+
+### Composition over Inheritance
+
+`Booking` is built by holding references to other domain objects — it does not extend any of them. This keeps each class independent and replaceable.
+
+```
+Booking
+──────────────────────────────────
+- bookingId: String    (PK)
+- flightId: String     (FK → Flight)
+- passengerId: String  (FK → Passenger)
+- seatId: String       (FK → Seat)
+- status: BookingStatus
+──────────────────────────────────
+
+Booking HAS-A Flight       (not extends Flight)
+Booking HAS-A Passenger    (not extends Passenger)
+Booking HAS-A Seat         (not extends Seat)
+Booking HAS-A Payment      (not extends Payment)
+```
 
 ---
 
 ## Design Patterns
 
-**Singleton** — every service class (`FlightService`, `BookingService`, `PaymentService`, `PassengerService`) has a private constructor, a static `instance` field, and a `getInstance()` method. This ensures one shared instance per service across the application lifetime and avoids redundant database connection overhead.
+### Singleton
 
-**Strategy** — `PaymentStrategy` defines a `processPayment(amount)` interface. `UPIPayment` and `CardPayment` are concrete implementations. Adding a new payment method (e.g. net banking) requires only a new class — no changes to existing code.
+Every service class follows the same pattern — one shared instance for the entire application lifetime. This prevents multiple database connection pools being created and ensures consistent state.
 
-**Repository** — services act as repositories, handling all CRUD operations and mapping between Prisma database records and domain model instances. The rest of the application never writes a raw query.
+```
+BookingService <<Singleton>>
+────────────────────────────────────────────────────────────────
+- instance: BookingService (static, private)
+
++ getInstance(): BookingService
+    └── if (instance == null) instance = new BookingService()
+        return instance 
+
++ createBooking(flightId, passenger, seatId): Booking
++ cancelBooking(bookingId): void
+────────────────────────────────────────────────────────────────
+
+Same pattern in:
+  FlightService    → getInstance()
+  PaymentService   → getInstance()
+```
+
+---
+
+### Strategy
+
+The payment method is selected at runtime and passed into `PaymentService`. The service does not contain any `if (method === "UPI")` logic — it delegates entirely to the strategy object.
+
+```
+                    PaymentService
+                    ─────────────────────────────────────────
+                    + processPayment(bookingId, strategy)
+                           │
+                           └── strategy.pay(amount)
+                                    │
+              ┌────────────────────┴────────────────────┐
+              │                                         │
+        UPIPayment                               CardPayment
+        ─────────────                            ─────────────
+        + pay(amount)                            + pay(amount)
+          → UPI gateway                           → card gateway
+
+PaymentMethod enum: UPI | CARD
+```
+
+To add net banking tomorrow: create `NetBankingPayment` implementing `PaymentStrategy`.
+
+---
+
+### Repository
+
+Services act as the only point of contact with the database. Route handlers never write Prisma queries — they call service methods and receive domain objects back.
+
+```
+Route handler                 BookingService               Prisma / DB
+─────────────                 ────────────────             ───────────
+POST /api/bookings
+  │
+  └── bookingService
+        .createBooking(...)  →  prisma.booking.create()  →  INSERT INTO booking
+                             ←  maps DB row to Booking   ←  row returned
+        ← returns Booking
+  ← sends JSON response
+```
 
 ---
 
 ## SOLID Principles
 
-**Single Responsibility** — `BookingService` manages bookings only. `PaymentService` manages payments only. No service crosses domain boundaries.
+### Single Responsibility
 
-**Open/Closed** — new payment methods are added by implementing `PaymentStrategy`, not by modifying `PaymentService`.
-
-**Liskov Substitution** — any `PaymentStrategy` implementation can replace another without the calling code needing to change.
-
-**Interface Segregation** — interfaces are kept focused. Services expose only the methods relevant to their domain.
-
-**Dependency Inversion** — routes depend on service interfaces and domain models, not on Prisma internals or raw SQL.
-
----
-
-## Database Design
-
-Models and their relationships:
+Each service class owns exactly one domain. No service reaches into another service's domain directly.
 
 ```
-Passenger ──< Booking >── Flight
-                |
-               Seat (reserved per booking, locked via SELECT FOR UPDATE)
-                |
-             Payment (confirmed before seat is reserved)
-
-Flight ──< Seat
-Flight >── Aircraft
+FlightService    → flights only    (search, details, status update)
+BookingService   → bookings only   (create, cancel, confirm)
+PaymentService   → payments only   (process, refund)
+PassengerService → passengers only (create, update, lookup)
 ```
 
-Key design decisions:
-- `(seat_number, flight_id)` is a composite primary key on the Seat table — the same seat number can exist across different flights
-- Payment is processed and confirmed before a seat reservation is written — if payment fails, no seat row is touched
-- Seat reservation uses row-level locking to handle concurrent booking attempts safely
+### Open / Closed
+
+The system is open for extension but closed for modification. New payment methods extend the system without touching existing code.
+
+```
+BEFORE (bad — closed for extension):
+  if (method === "UPI")  { ... }
+  if (method === "CARD") { ... }   ← must edit this file to add new method
+
+AFTER (correct — open for extension):
+  strategy.pay(amount)             ← add new class, never edit this line
+```
+
+### Liskov Substitution
+
+Any `PaymentStrategy` implementation can be swapped for another. The calling code behaves identically regardless of which concrete class is used.
+
+```
+PaymentService.processPayment(bookingId, new UPIPayment())
+PaymentService.processPayment(bookingId, new CardPayment())
+  ↑ both calls work identically — same method signature, same return type
+```
+
+### Interface Segregation
+
+Interfaces are narrow and focused. `PaymentStrategy` defines only one method — `pay(amount)`. Implementations are not forced to define methods they do not use.
+
+```
+<<interface>> PaymentStrategy
+──────────────────────────────
++ pay(amount: double): boolean   ← one method, one responsibility
+```
+
+### Dependency Inversion
+
+Route handlers depend on service abstractions, not on Prisma or database internals. The database layer can be swapped (e.g. switching from SQLite to PostgreSQL) without touching a single route file.
+
+```
+Route handler
+  └── depends on → BookingService (abstraction)
+                       └── depends on → Prisma (detail)
+
+                   ← Route never imports Prisma directly
+```
 
 ---
 
