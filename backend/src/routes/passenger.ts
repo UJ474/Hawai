@@ -14,34 +14,32 @@ const updatePassengerSchema = z.object({
   email: z.string().email().optional(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   try {
     const parsed = createPassengerSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { name, email } = parsed.data;
 
     const passenger = await passengerService.create(name, email, "default-password");
     res.status(201).json(passenger);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const passengers = await passengerService.findAll();
     res.json(passengers);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const passenger = await passengerService.findById(req.params["id"]);
     if (!passenger) {
@@ -49,36 +47,33 @@ router.get("/:id", async (req, res) => {
       return;
     }
     res.json(passenger);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", async (req, res, next) => {
   try {
     const parsed = updatePassengerSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { name, email } = parsed.data;
 
     const passenger = await passengerService.update(req.params["id"], { name, email });
     res.json(passenger);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     await passengerService.delete(req.params["id"]);
     res.status(204).send();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 

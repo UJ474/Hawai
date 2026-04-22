@@ -16,15 +16,30 @@ export interface PaymentStrategy {
 
 export class UPIPayment implements PaymentStrategy {
   public pay(amount: number): boolean {
-    // UPI payment logic
+    console.log(`[UPI] Processing payment of ₹${amount} via UPI gateway...`);
+    // Simulated UPI logic: In a real app, this would call a UPI intent/callback API
     return true;
   }
 }
 
 export class CardPayment implements PaymentStrategy {
   public pay(amount: number): boolean {
-    // Card payment logic
+    console.log(`[Card] Processing payment of ₹${amount} via Payment Gateway (Stripe/Razorpay)...`);
+    // Simulated Card logic: In a real app, this would involve tokenization and PCI-DSS compliant processing
     return true;
+  }
+}
+
+export class PaymentFactory {
+  public static createStrategy(method: PaymentMethod): PaymentStrategy {
+    switch (method) {
+      case PaymentMethod.UPI:
+        return new UPIPayment();
+      case PaymentMethod.CARD:
+        return new CardPayment();
+      default:
+        throw new Error(`Payment method ${method} not supported`);
+    }
   }
 }
 
@@ -49,11 +64,8 @@ export class Payment {
     this.method = method;
   }
 
-  public processPayment(): boolean {
-    // Basic implementation since processPayment delegates to strategy in Service
-    // In actual implementation it might use strategy internally if passed here,
-    // but the diagram shows PaymentService doing: processPayment(bookingId, strategy)
-    return true;
+  public processPayment(strategy: PaymentStrategy): boolean {
+    return strategy.pay(this.amount);
   }
 
   // Getters

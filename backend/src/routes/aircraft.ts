@@ -15,34 +15,32 @@ const updateAircraftSchema = z.object({
   capacity: z.number().int().positive().optional(),
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   try {
     const parsed = createAircraftSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { tailNumber, model, capacity } = parsed.data;
 
     const aircraft = await aircraftService.create(tailNumber, model, capacity);
     res.status(201).json(aircraft);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.get("/", async (_req, res) => {
+router.get("/", async (_req, res, next) => {
   try {
     const aircrafts = await aircraftService.findAll();
     res.json(aircrafts);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.get("/:tailNumber", async (req, res) => {
+router.get("/:tailNumber", async (req, res, next) => {
   try {
     const aircraft = await aircraftService.findByTailNumber(req.params.tailNumber);
     if (!aircraft) {
@@ -50,17 +48,16 @@ router.get("/:tailNumber", async (req, res) => {
       return;
     }
     res.json(aircraft);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.put("/:tailNumber", async (req, res) => {
+router.put("/:tailNumber", async (req, res, next) => {
   try {
     const parsed = updateAircraftSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { model, capacity } = parsed.data;
@@ -70,19 +67,17 @@ router.put("/:tailNumber", async (req, res) => {
       capacity,
     });
     res.json(aircraft);
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.delete("/:tailNumber", async (req, res) => {
+router.delete("/:tailNumber", async (req, res, next) => {
   try {
     await aircraftService.delete(req.params.tailNumber);
     res.status(204).send();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(400).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
