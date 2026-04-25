@@ -6,7 +6,8 @@ export declare class BookingService {
     private mapRecord;
     /**
      * Create a new booking (route-facing alias with flat args).
-     * passengerId here is the DB id of an existing passenger.
+     * seatId here can be either the DB UUID or the human-readable seatNumber.
+     * We resolve it to the actual seat record before proceeding.
      */
     create(flightId: string, passengerId: string, seatId: string, _price: number): Promise<Booking>;
     /** Return all bookings. */

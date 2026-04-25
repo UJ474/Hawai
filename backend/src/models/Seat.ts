@@ -11,9 +11,9 @@ export enum SeatStatus {
 
 export class Seat {
   private seatId: string;
-  public seatNumber: string;
+  private seatNumber: string;
   private seatType: SeatType;
-  public status: SeatStatus;
+  private status: SeatStatus;
   private flightId: string;
 
   constructor(
@@ -43,6 +43,8 @@ export class Seat {
   }
 
   public getSeatId(): string { return this.seatId; }
+  public getSeatNumber(): string { return this.seatNumber; }
   public getSeatType(): SeatType { return this.seatType; }
+  public getStatus(): SeatStatus { return this.status; }
   public getFlightId(): string { return this.flightId; }
 }

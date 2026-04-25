@@ -1,6 +1,7 @@
 import { Flight, FlightStatus } from "../models/index.js";
 export declare class FlightService {
     private static instance;
+    private constructor();
     static getInstance(): FlightService;
     /** Map a Prisma flight record (with seats) to a Flight domain object */
     private mapRecord;

@@ -7,6 +7,7 @@ import bookingRoutes from "./routes/booking.js";
 import paymentRoutes from "./routes/payment.js";
 import authRoutes from "./routes/auth.js";
 import { authenticateToken } from "./middleware/auth.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 const PORT = process.env["PORT"] ?? 3000;
 app.use(express.json());
@@ -22,10 +23,8 @@ app.use("/api/payments", authenticateToken, paymentRoutes); // Protected mapping
 app.use((_req, res) => {
     res.status(404).json({ error: "Route not found" });
 });
-app.use((err, _req, res, _next) => {
-    const message = err instanceof Error ? err.message : "Internal server error";
-    res.status(500).json({ error: message });
-});
+// Centralized Error Handler
+app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`✈  Airline Management API running on http://localhost:${PORT}`);
     console.log(`   Health check: GET http://localhost:${PORT}/health`);

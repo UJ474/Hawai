@@ -9,15 +9,17 @@ export declare enum SeatStatus {
 }
 export declare class Seat {
     private seatId;
-    seatNumber: string;
+    private seatNumber;
     private seatType;
-    status: SeatStatus;
+    private status;
     private flightId;
     constructor(seatId: string, seatNumber: string, seatType: SeatType, flightId: string, status?: SeatStatus);
     book(): void;
     release(): void;
     getSeatId(): string;
+    getSeatNumber(): string;
     getSeatType(): SeatType;
+    getStatus(): SeatStatus;
     getFlightId(): string;
 }
 //# sourceMappingURL=Seat.d.ts.map

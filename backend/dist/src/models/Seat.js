@@ -32,9 +32,10 @@ export class Seat {
             this.status = SeatStatus.AVAILABLE;
         }
     }
-    // Getters
     getSeatId() { return this.seatId; }
+    getSeatNumber() { return this.seatNumber; }
     getSeatType() { return this.seatType; }
+    getStatus() { return this.status; }
     getFlightId() { return this.flightId; }
 }
 //# sourceMappingURL=Seat.js.map

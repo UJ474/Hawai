@@ -3,6 +3,14 @@ import { Passenger } from "../models/index.js";
 import bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 export class PassengerService {
+    static instance;
+    constructor() { }
+    static getInstance() {
+        if (!PassengerService.instance) {
+            PassengerService.instance = new PassengerService();
+        }
+        return PassengerService.instance;
+    }
     /** Create a new passenger — uses Passenger model logic, then persists */
     async create(name, email, password, phone = "") {
         // Passenger constructor: (passengerId, name, email, phone)
@@ -36,5 +44,5 @@ export class PassengerService {
         return prisma.passenger.delete({ where: { id } });
     }
 }
-export const passengerService = new PassengerService();
+export const passengerService = PassengerService.getInstance();
 //# sourceMappingURL=PassengerService.js.map

@@ -8,11 +8,11 @@ const createBookingSchema = z.object({
     seatNumber: z.string().min(1),
     price: z.number().positive(),
 });
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
     try {
         const parsed = createBookingSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { flightId, passengerId, seatNumber, price } = parsed.data;
@@ -20,21 +20,19 @@ router.post("/", async (req, res) => {
         res.status(201).json(booking);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
     try {
         const bookings = await bookingService.findAll();
         res.json(bookings);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req, res, next) => {
     try {
         const booking = await bookingService.findById(req.params["id"]);
         if (!booking) {
@@ -44,38 +42,34 @@ router.get("/:id", async (req, res) => {
         res.json(booking);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.get("/passenger/:passengerId", async (req, res) => {
+router.get("/passenger/:passengerId", async (req, res, next) => {
     try {
         const bookings = await bookingService.findByPassengerId(req.params["passengerId"]);
         res.json(bookings);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.patch("/:id/cancel", async (req, res) => {
+router.patch("/:id/cancel", async (req, res, next) => {
     try {
         const updated = await bookingService.cancel(req.params["id"]);
         res.json(updated);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
     try {
         await bookingService.delete(req.params["id"]);
         res.status(204).send();
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
 export default router;
