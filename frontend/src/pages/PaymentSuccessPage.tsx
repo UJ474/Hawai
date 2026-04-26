@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import type { Payment } from "../services/paymentService";
-import { paymentService } from "../services/paymentService";
+// import { paymentService } from "../services/paymentService";
 import { useAuth } from "../context/AuthContext";
 
 const PaymentSuccessPage: React.FC = () => {

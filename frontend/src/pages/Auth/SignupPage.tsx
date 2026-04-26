@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AuthForm from "../../components/Auth/AuthForm";
 import { authService } from "../../services/authService";
-import { useAuth } from "../../context/AuthContext";
+// import { useAuth } from "../../context/AuthContext";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -11,12 +11,12 @@ const SignupPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (data: { name: string; email: string; password: string }) => {
+  const handleSubmit = async (data: { name?: string | undefined; email: string; password: string }) => {
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
     try {
-      const response = await authService.signup(data.name, data.email, data.password);
+      const response = await authService.signup(data.name ?? "", data.email, data.password);
       if (response.user) {
         setSuccessMessage("Account created successfully! You can now log in.");
         // Optionally, if signup automatically logs in:
