@@ -17,39 +17,35 @@ const flightQuerySchema = z.object({
 const patchFlightStatusSchema = z.object({
     status: z.enum(["SCHEDULED", "ON_TIME", "DELAYED", "CANCELLED"]),
 });
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
     try {
         const parsed = createFlightSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
-            return;
+            return next(parsed.error);
         }
         const { source, destination, departureTime, arrivalTime, aircraftId } = parsed.data;
         const flight = await flightService.create(source, destination, new Date(departureTime), new Date(arrivalTime), aircraftId);
         res.status(201).json(flight);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
     try {
         const parsed = flightQuerySchema.safeParse(req.query);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
-            return;
+            return next(parsed.error);
         }
         const { source, destination, date } = parsed.data;
         const flights = await flightService.findAll({ source, destination, date });
         res.json(flights);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req, res, next) => {
     try {
         const flight = await flightService.findById(req.params["id"]);
         if (!flight) {
@@ -59,15 +55,14 @@ router.get("/:id", async (req, res) => {
         res.json(flight);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", async (req, res, next) => {
     try {
         const parsed = patchFlightStatusSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { status } = parsed.data;
@@ -75,18 +70,16 @@ router.patch("/:id/status", async (req, res) => {
         res.json(flight);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
     try {
         await flightService.delete(req.params["id"]);
         res.status(204).send();
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
 export default router;

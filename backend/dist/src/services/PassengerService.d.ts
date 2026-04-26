@@ -1,4 +1,7 @@
 export declare class PassengerService {
+    private static instance;
+    private constructor();
+    static getInstance(): PassengerService;
     /** Create a new passenger — uses Passenger model logic, then persists */
     create(name: string, email: string, password: string, phone?: string): Promise<{
         name: string;

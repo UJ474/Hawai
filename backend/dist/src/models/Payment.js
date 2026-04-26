@@ -12,16 +12,32 @@ export var PaymentMethod;
 })(PaymentMethod || (PaymentMethod = {}));
 export class UPIPayment {
     pay(amount) {
-        // UPI payment logic
+        console.log(`[UPI] Processing payment of ₹${amount} via UPI gateway...`);
         return true;
     }
 }
 export class CardPayment {
     pay(amount) {
-        // Card payment logic
+        console.log(`[Card] Processing payment of ₹${amount} via Payment Gateway (Stripe/Razorpay)...`);
         return true;
     }
 }
+export class PaymentFactory {
+    static strategies = new Map();
+    static register(method, strategy) {
+        this.strategies.set(method, strategy);
+    }
+    static createStrategy(method) {
+        const strategy = this.strategies.get(method);
+        if (!strategy) {
+            throw new Error(`Payment method ${method} not supported`);
+        }
+        return strategy;
+    }
+}
+// Register all supported strategies at module load time
+PaymentFactory.register(PaymentMethod.UPI, new UPIPayment());
+PaymentFactory.register(PaymentMethod.CARD, new CardPayment());
 export class Payment {
     paymentId;
     bookingId;
@@ -35,13 +51,9 @@ export class Payment {
         this.status = status;
         this.method = method;
     }
-    processPayment() {
-        // Basic implementation since processPayment delegates to strategy in Service
-        // In actual implementation it might use strategy internally if passed here,
-        // but the diagram shows PaymentService doing: processPayment(bookingId, strategy)
-        return true;
+    processPayment(strategy) {
+        return strategy.pay(this.amount);
     }
-    // Getters
     getPaymentId() { return this.paymentId; }
     getBookingId() { return this.bookingId; }
     getAmount() { return this.amount; }

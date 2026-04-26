@@ -11,11 +11,11 @@ const updateAircraftSchema = z.object({
     model: z.string().min(1).optional(),
     capacity: z.number().int().positive().optional(),
 });
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
     try {
         const parsed = createAircraftSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { tailNumber, model, capacity } = parsed.data;
@@ -23,21 +23,19 @@ router.post("/", async (req, res) => {
         res.status(201).json(aircraft);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.get("/", async (_req, res) => {
+router.get("/", async (_req, res, next) => {
     try {
         const aircrafts = await aircraftService.findAll();
         res.json(aircrafts);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.get("/:tailNumber", async (req, res) => {
+router.get("/:tailNumber", async (req, res, next) => {
     try {
         const aircraft = await aircraftService.findByTailNumber(req.params.tailNumber);
         if (!aircraft) {
@@ -47,15 +45,14 @@ router.get("/:tailNumber", async (req, res) => {
         res.json(aircraft);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.put("/:tailNumber", async (req, res) => {
+router.put("/:tailNumber", async (req, res, next) => {
     try {
         const parsed = updateAircraftSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { model, capacity } = parsed.data;
@@ -66,18 +63,16 @@ router.put("/:tailNumber", async (req, res) => {
         res.json(aircraft);
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
-router.delete("/:tailNumber", async (req, res) => {
+router.delete("/:tailNumber", async (req, res, next) => {
     try {
         await aircraftService.delete(req.params.tailNumber);
         res.status(204).send();
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(400).json({ error: message });
+        next(err);
     }
 });
 export default router;

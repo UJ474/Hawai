@@ -17,7 +17,6 @@ export interface PaymentStrategy {
 export class UPIPayment implements PaymentStrategy {
   public pay(amount: number): boolean {
     console.log(`[UPI] Processing payment of ₹${amount} via UPI gateway...`);
-    // Simulated UPI logic: In a real app, this would call a UPI intent/callback API
     return true;
   }
 }
@@ -25,23 +24,29 @@ export class UPIPayment implements PaymentStrategy {
 export class CardPayment implements PaymentStrategy {
   public pay(amount: number): boolean {
     console.log(`[Card] Processing payment of ₹${amount} via Payment Gateway (Stripe/Razorpay)...`);
-    // Simulated Card logic: In a real app, this would involve tokenization and PCI-DSS compliant processing
     return true;
   }
 }
 
 export class PaymentFactory {
-  public static createStrategy(method: PaymentMethod): PaymentStrategy {
-    switch (method) {
-      case PaymentMethod.UPI:
-        return new UPIPayment();
-      case PaymentMethod.CARD:
-        return new CardPayment();
-      default:
-        throw new Error(`Payment method ${method} not supported`);
+  private static strategies = new Map<PaymentMethod, PaymentStrategy>();
+
+  static register(method: PaymentMethod, strategy: PaymentStrategy) {
+    this.strategies.set(method, strategy);
+  }
+
+  static createStrategy(method: PaymentMethod): PaymentStrategy {
+    const strategy = this.strategies.get(method);
+    if (!strategy) {
+      throw new Error(`Payment method ${method} not supported`);
     }
+    return strategy;
   }
 }
+
+// Register all supported strategies at module load time
+PaymentFactory.register(PaymentMethod.UPI, new UPIPayment());
+PaymentFactory.register(PaymentMethod.CARD, new CardPayment());
 
 export class Payment {
   private paymentId: string;
@@ -68,7 +73,6 @@ export class Payment {
     return strategy.pay(this.amount);
   }
 
-  // Getters
   public getPaymentId(): string { return this.paymentId; }
   public getBookingId(): string { return this.bookingId; }
   public getAmount(): number { return this.amount; }

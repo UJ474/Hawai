@@ -4,6 +4,8 @@ import { Flight, FlightStatus, Seat, SeatStatus, SeatType } from "../models/inde
 export class FlightService {
   private static instance: FlightService;
 
+  private constructor() {}
+
   public static getInstance(): FlightService {
     if (!FlightService.instance) {
       FlightService.instance = new FlightService();

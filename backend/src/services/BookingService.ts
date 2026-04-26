@@ -35,7 +35,8 @@ export class BookingService {
 
   /**
    * Create a new booking (route-facing alias with flat args).
-   * passengerId here is the DB id of an existing passenger.
+   * seatId here can be either the DB UUID or the human-readable seatNumber.
+   * We resolve it to the actual seat record before proceeding.
    */
   public async create(
     flightId: string,
@@ -44,20 +45,26 @@ export class BookingService {
     _price: number // kept for schema compatibility, stored on DB record
   ): Promise<Booking> {
     return await prisma.$transaction(async (tx) => {
-      // Ensure seat exists and is free
-      const seatRecord = await tx.seat.findUnique({ where: { id: seatId } });
+      // Resolve seat — accept either a UUID (id) or a seatNumber string
+      let seatRecord = await tx.seat.findUnique({ where: { id: seatId } });
+      if (!seatRecord) {
+        // Try resolving by (flightId, seatNumber) for human-readable seat labels
+        seatRecord = await tx.seat.findUnique({
+          where: { flightId_seatNumber: { flightId, seatNumber: seatId } },
+        });
+      }
       if (!seatRecord) throw new Error("Seat does not exist.");
       if (seatRecord.isBooked) throw new Error("Seat is already booked.");
 
       // Lock the seat
-      await tx.seat.update({ where: { id: seatId }, data: { isBooked: true } });
+      await tx.seat.update({ where: { id: seatRecord.id }, data: { isBooked: true } });
 
       // Persist booking
       const record = await tx.booking.create({
         data: {
           flightId,
           passengerId,
-          seatId,
+          seatId: seatRecord.id,
           status: BookingStatus.CONFIRMED,
           price: _price,
         },

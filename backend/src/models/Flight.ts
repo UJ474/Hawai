@@ -1,4 +1,4 @@
-import { Seat } from "./Seat.js";
+import { Seat, SeatStatus } from "./Seat.js";
 
 export enum FlightStatus {
   ON_TIME = "ON_TIME",
@@ -34,12 +34,12 @@ export class Flight {
   }
 
   public getAvailableSeats(): Seat[] {
-    return this.seats.filter((seat) => seat.status === 'AVAILABLE'); // Assuming SeatStatus.AVAILABLE
+    return this.seats.filter((seat) => seat.getStatus() === SeatStatus.AVAILABLE);
   }
 
   public reserveSeat(seatNumber: string): boolean {
-    const seat = this.seats.find((s) => s.seatNumber === seatNumber);
-    if (seat && seat.status === 'AVAILABLE') {
+    const seat = this.seats.find((s) => s.getSeatNumber() === seatNumber);
+    if (seat && seat.getStatus() === SeatStatus.AVAILABLE) {
       seat.book();
       return true;
     }
@@ -47,7 +47,7 @@ export class Flight {
   }
 
   public releaseSeat(seatNumber: string): void {
-    const seat = this.seats.find((s) => s.seatNumber === seatNumber);
+    const seat = this.seats.find((s) => s.getSeatNumber() === seatNumber);
     if (seat) {
       seat.release();
     }

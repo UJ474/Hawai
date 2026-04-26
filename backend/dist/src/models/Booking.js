@@ -24,7 +24,6 @@ export class Booking {
     cancelBooking() {
         this.status = BookingStatus.CANCELED;
     }
-    // Getters
     getBookingId() { return this.bookingId; }
     getFlightId() { return this.flightId; }
     getPassengerId() { return this.passengerId; }

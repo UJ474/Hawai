@@ -9,7 +9,6 @@ export const errorHandler = (
 ) => {
   console.error("Error caught by middleware:", err);
 
-  // Prisma Error Handling
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case "P2002": {
@@ -40,7 +39,7 @@ export const errorHandler = (
     }
   }
 
-  // Zod Validation Errors
+
   if (err.name === "ZodError" || err instanceof Error && err.constructor.name === "ZodError") {
     return res.status(400).json({
       error: "Validation failed",
@@ -51,7 +50,6 @@ export const errorHandler = (
     });
   }
 
-  // Default Error
   const statusCode = err.status || 500;
   const message = err.message || "Internal server error";
 

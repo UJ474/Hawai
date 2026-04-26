@@ -17,17 +17,17 @@ const loginSchema = z.object({
     email: z.string().email("Invalid email"),
     password: z.string().min(1, "Password is required"),
 });
-router.post("/signup", async (req, res) => {
+router.post("/signup", async (req, res, next) => {
     try {
         const parsed = signupSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { name, email, password } = parsed.data;
         const existingUser = await passengerService.findByEmail(email);
         if (existingUser) {
-            res.status(409).json({ error: "Email is already in use" });
+            res.status(409).json({ error: "Conflict", message: "Email is already in use" });
             return;
         }
         const passenger = await passengerService.create(name, email, password);
@@ -35,34 +35,32 @@ router.post("/signup", async (req, res) => {
         res.status(201).json({ message: "User registered successfully", user: userWithoutPassword });
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
-router.post("/login", async (req, res) => {
+router.post("/login", async (req, res, next) => {
     try {
         const parsed = loginSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ error: parsed.error });
+            res.status(400).json({ error: "Validation failed", details: parsed.error });
             return;
         }
         const { email, password } = parsed.data;
         const passenger = await passengerService.findByEmail(email);
         if (!passenger) {
-            res.status(401).json({ error: "Invalid email or password" });
+            res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
             return;
         }
         const isValidPassword = await bcrypt.compare(password, passenger.password);
         if (!isValidPassword) {
-            res.status(401).json({ error: "Invalid email or password" });
+            res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
             return;
         }
         const token = jwt.sign({ id: passenger.id, email: passenger.email }, JWT_SECRET, { expiresIn: "1h" });
         res.json({ message: "Login successful", token });
     }
     catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        res.status(500).json({ error: message });
+        next(err);
     }
 });
 export default router;
