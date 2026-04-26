@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { paymentService, PaymentMethod } from "../services/paymentService";
-import { bookingService, Booking } from "../services/bookingService";
+import type { Booking } from "../services/bookingService";
+import { bookingService } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 const PaymentPage: React.FC = () => {

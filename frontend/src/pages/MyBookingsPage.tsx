@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { bookingService, Booking } from "../services/bookingService";
+import type { Booking } from "../services/bookingService";
+import { bookingService } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 const MyBookingsPage: React.FC = () => {

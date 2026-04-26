@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { flightService, Flight } from "../services/flightService";
+import type { Flight } from "../services/flightService";
+import { flightService } from "../services/flightService";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 

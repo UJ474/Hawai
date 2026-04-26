@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // Although signup doesn't directly log in, it might automatically log in after successful registration
+  // const { login } = useAuth(); // Although signup doesn't directly log in, it might automatically log in after successful registration
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);

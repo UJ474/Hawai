@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { paymentService, Payment } from "../services/paymentService";
+import type { Payment } from "../services/paymentService";
+import { paymentService } from "../services/paymentService";
 import { useAuth } from "../context/AuthContext";
 
 const PaymentSuccessPage: React.FC = () => {
@@ -14,9 +15,9 @@ const PaymentSuccessPage: React.FC = () => {
     // In a real application, you might fetch payment details here
     // based on paymentId to confirm its status and display details.
     // For this prototype, we'll assume success if we land on this page.
+    // If the user is not authenticated, avoid calling setState here to prevent cascading renders;
+    // the component already returns a login prompt in the render when !isAuthenticated.
     if (!isAuthenticated) {
-      setError("Please log in to view payment details.");
-      setLoading(false);
       return;
     }
     
@@ -27,7 +28,7 @@ const PaymentSuccessPage: React.FC = () => {
             bookingId: "mock-booking-id", // This should come from a real payment object
             amount: 100, // This should come from a real payment object
             status: "COMPLETED",
-            method: "CARD", // This should come from a real payment object
+            method: "CARD" as Payment["method"], // This should come from a real payment object
         });
         setLoading(false);
     } else {
