@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000
 
 export interface Flight {
   flightId: string;
+  flightNumber: string;
   source: string;
   destination: string;
   departureTime: string; // ISO date string
@@ -15,20 +16,26 @@ export interface Seat {
   seatId: string;
   seatNumber: string;
   seatType: "ECONOMY" | "BUSINESS" | "FIRST_CLASS";
-  status: "AVAILABLE" | "BOOKED";
+  status: "AVAILABLE" | "BOOKED" | "OCCUPIED";
   flightId: string;
 }
 
+export interface FlightFilters {
+  source?: string;
+  destination?: string;
+  date?: string;
+  priceMax?: number;
+  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night';
+}
+
 export const flightService = {
-  async getFlights(
-    source?: string,
-    destination?: string,
-    date?: string // YYYY-MM-DD
-  ): Promise<Flight[]> {
+  async getFlights(filters: FlightFilters): Promise<Flight[]> {
     const params = new URLSearchParams();
-    if (source) params.append("source", source);
-    if (destination) params.append("destination", destination);
-    if (date) params.append("date", date);
+    if (filters.source) params.append("source", filters.source);
+    if (filters.destination) params.append("destination", filters.destination);
+    if (filters.date) params.append("date", filters.date);
+    if (filters.priceMax) params.append("priceMax", filters.priceMax.toString());
+    if (filters.timeOfDay) params.append("timeOfDay", filters.timeOfDay);
 
     const response = await fetch(`${API_BASE_URL}/flights?${params.toString()}`, {
       headers: {
@@ -54,7 +61,4 @@ export const flightService = {
     }
     return response.json();
   },
-
-  // Add more flight-related services (e.g., create, update, delete) as needed,
-  // potentially with admin roles check.
 };

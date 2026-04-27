@@ -15,11 +15,22 @@ const createFlightSchema = z.object({
 const flightQuerySchema = z.object({
   source: z.string().optional(),
   destination: z.string().optional(),
-  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date string" }).optional(),
+  date: z.string().optional(),
+  priceMax: z.string().transform(Number).optional(),
+  timeOfDay: z.enum(['morning', 'afternoon', 'evening', 'night']).optional(),
 });
 
-const patchFlightStatusSchema = z.object({
-  status: z.enum(["SCHEDULED", "ON_TIME", "DELAYED", "CANCELLED"]),
+router.get("/", async (req, res, next) => {
+  try {
+    const parsed = flightQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return next(parsed.error);
+    }
+    const flights = await flightService.findAll(parsed.data);
+    res.json(flights);
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post("/", async (req, res, next) => {
@@ -43,21 +54,6 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.get("/", async (req, res, next) => {
-  try {
-    const parsed = flightQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      return next(parsed.error);
-    }
-    const { source, destination, date } = parsed.data;
-
-    const flights = await flightService.findAll({ source, destination, date });
-    res.json(flights);
-  } catch (err) {
-    next(err);
-  }
-});
-
 router.get("/:id", async (req, res, next) => {
   try {
     const flight = await flightService.findById(req.params["id"]);
@@ -73,13 +69,7 @@ router.get("/:id", async (req, res, next) => {
 
 router.patch("/:id/status", async (req, res, next) => {
   try {
-    const parsed = patchFlightStatusSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Validation failed", details: parsed.error });
-      return;
-    }
-    const { status } = parsed.data;
-    
+    const status = req.body.status;
     const flight = await flightService.updateStatus(req.params["id"], status as any);
     res.json(flight);
   } catch (err) {

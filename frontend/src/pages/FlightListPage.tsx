@@ -8,10 +8,18 @@ import {
   Filter, 
   ChevronRight, 
   ArrowRightLeft,
-  Info
+  Info,
+  Luggage,
+  Briefcase,
+  AlertCircle,
+  Tag,
+  Sunrise,
+  Sun,
+  Sunset,
+  Moon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Flight } from "../services/flightService";
+import type { Flight, FlightFilters } from "../services/flightService";
 import { flightService } from "../services/flightService";
 import { useAuth } from "../context/AuthContext";
 
@@ -27,12 +35,28 @@ const FlightListPage: React.FC = () => {
   const [source, setSource] = useState(queryParams.get("from") || "");
   const [destination, setDestination] = useState(queryParams.get("to") || "");
   const [date, setDate] = useState(queryParams.get("date") || "");
+  const [priceMax, setPriceMax] = useState<number>(1000);
+  const [timeOfDay, setTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'night' | undefined>(undefined);
+  const [extraBaggageOnly, setExtraBaggageOnly] = useState(false);
 
   const fetchFlights = async () => {
     setLoading(true);
     setError(null);
     try {
-      const fetchedFlights = await flightService.getFlights(source, destination, date);
+      const filters: FlightFilters = {
+        source,
+        destination,
+        date: date || undefined,
+        priceMax,
+        timeOfDay
+      };
+      let fetchedFlights = await flightService.getFlights(filters);
+      
+      // Client-side filter for extra baggage (simulation)
+      if (extraBaggageOnly) {
+        fetchedFlights = fetchedFlights.filter(f => parseInt(f.flightId.slice(-1), 16) % 2 === 0);
+      }
+      
       setFlights(fetchedFlights);
     } catch (err: any) {
       setError(err.message || "Failed to fetch flights.");
@@ -43,7 +67,7 @@ const FlightListPage: React.FC = () => {
 
   useEffect(() => {
     fetchFlights();
-  }, []);
+  }, [timeOfDay, extraBaggageOnly]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,142 +155,232 @@ const FlightListPage: React.FC = () => {
 
       <div className="container mx-auto px-6 -mt-8">
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar Filters - Simple Placeholder */}
-          <div className="lg:w-64 space-y-6">
+          {/* Sidebar Filters */}
+          <div className="lg:w-72 space-y-6">
             <div className="bg-white p-6 rounded-3xl shadow-xl shadow-ocean/5 border border-sky/5">
-              <div className="flex items-center gap-2 mb-6">
-                <Filter className="w-5 h-5 text-tropical" />
-                <h3 className="font-bold text-ocean">Filters</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-rock uppercase tracking-wider">Price Range</label>
-                  <input type="range" className="w-full accent-tropical mt-2" />
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-tropical" />
+                  <h3 className="font-bold text-ocean">Filters</h3>
                 </div>
+                <button 
+                  onClick={() => {setTimeOfDay(undefined); setPriceMax(1000); setExtraBaggageOnly(false); fetchFlights();}}
+                  className="text-[10px] font-black text-tropical uppercase tracking-widest"
+                >
+                  Reset
+                </button>
+              </div>
+              
+              <div className="space-y-8">
                 <div>
-                  <label className="text-xs font-bold text-rock uppercase tracking-wider">Flight Status</label>
-                  <div className="space-y-2 mt-2 text-sm font-medium text-ocean">
-                    <label className="flex items-center gap-2"><input type="checkbox" className="rounded text-tropical" /> Scheduled</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" className="rounded text-tropical" /> On Time</label>
+                  <label className="text-xs font-black text-rock uppercase tracking-widest mb-4 block">Time of Day</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'morning', label: 'Morning', icon: Sunrise },
+                      { id: 'afternoon', label: 'Afternoon', icon: Sun },
+                      { id: 'evening', label: 'Evening', icon: Sunset },
+                      { id: 'night', label: 'Night', icon: Moon }
+                    ].map(t => (
+                      <button 
+                        key={t.id}
+                        onClick={() => setTimeOfDay(t.id as any)}
+                        className={`p-3 border rounded-xl flex flex-col items-center gap-1 transition-all ${
+                          timeOfDay === t.id ? 'bg-tropical text-white border-tropical shadow-lg shadow-tropical/20' : 'bg-cloud border-sky/20 text-ocean hover:border-tropical'
+                        }`}
+                      >
+                        <t.icon className={`w-4 h-4 ${timeOfDay === t.id ? 'text-white' : 'text-tropical'}`} />
+                        <span className="text-[9px] font-black uppercase">{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-black text-rock uppercase tracking-widest mb-4 block">Max Price: ${priceMax}</label>
+                  <input 
+                    type="range" 
+                    className="w-full accent-tropical" 
+                    min="100" 
+                    max="1000" 
+                    step="50"
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(parseInt(e.target.value))}
+                    onMouseUp={fetchFlights}
+                  />
+                  <div className="flex justify-between mt-2 text-[10px] font-bold text-rock">
+                    <span>$100</span>
+                    <span>$1000</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-black text-rock uppercase tracking-widest mb-4 block">Preference</label>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input 
+                          type="checkbox" 
+                          checked={extraBaggageOnly}
+                          onChange={(e) => setExtraBaggageOnly(e.target.checked)}
+                          className="w-5 h-5 rounded-lg border-2 border-sky/30 text-tropical focus:ring-tropical transition-all" 
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-ocean group-hover:text-tropical transition-colors">Extra Baggage Included</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer group opacity-40">
+                      <input type="checkbox" disabled className="w-5 h-5 rounded-lg border-2 border-sky/30" />
+                      <span className="text-xs font-bold text-ocean">Refundable Fare</span>
+                    </label>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-gradient-to-br from-tropical to-ocean p-6 rounded-3xl text-white shadow-xl shadow-tropical/20">
-              <Info className="w-6 h-6 mb-4 opacity-50" />
-              <h4 className="font-bold mb-2">Travel Insurance</h4>
-              <p className="text-xs text-sky/70 leading-relaxed mb-4">Protect your journey with Hawai Premium Cover.</p>
-              <button className="text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 py-2 px-4 rounded-lg transition-all">Learn More</button>
+            <div className="bg-gradient-to-br from-tropical to-ocean p-8 rounded-[2.5rem] text-white shadow-xl shadow-tropical/20 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <Luggage className="w-8 h-8 mb-6 opacity-50" />
+              <h4 className="text-xl font-black mb-2">Extra Bag?</h4>
+              <p className="text-xs text-sky/70 font-medium leading-relaxed mb-6">Pre-book your excess baggage now and save up to 20% on airport rates.</p>
+              <button className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all backdrop-blur-sm">Add Baggage</button>
             </div>
           </div>
 
           {/* Main Results */}
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h2 className="text-xl font-bold text-ocean">
-                {flights.length} Flights Available
-              </h2>
-              <select className="bg-transparent border-none text-sm font-bold text-tropical focus:ring-0 cursor-pointer">
-                <option>Sort by Price</option>
-                <option>Sort by Time</option>
-              </select>
+          <div className="flex-1 space-y-6">
+            <div className="flex items-center justify-between mb-2 px-4">
+              <p className="text-sm font-bold text-ocean/60 uppercase tracking-widest">
+                Showing <span className="text-ocean">{flights.length} flights</span> for your journey
+              </p>
+              <div className="flex items-center gap-4">
+                <Tag className="w-4 h-4 text-tropical" />
+                <span className="text-xs font-black text-tropical uppercase tracking-widest">Cheapest Fare Guarantee</span>
+              </div>
             </div>
 
-            {error && (
-              <div className="bg-coral/10 border border-coral/20 text-coral p-6 rounded-3xl font-bold text-center">
-                {error}
-              </div>
-            )}
-
-            <AnimatePresence mode="popLayout">
-              {flights.length === 0 && !loading ? (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-white p-20 rounded-[3rem] text-center shadow-xl border border-sky/10"
-                >
-                  <Plane className="w-16 h-16 text-rock/20 mx-auto mb-6 -rotate-12" />
-                  <p className="text-xl font-bold text-ocean mb-2">No flights found</p>
-                  <p className="text-rock font-medium">Try adjusting your search criteria or dates.</p>
+            {loading ? (
+              <div className="py-20 flex flex-col items-center">
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2 }}>
+                  <Plane className="w-12 h-12 text-tropical/20" />
                 </motion.div>
-              ) : (
-                flights.map((flight, idx) => (
-                  <motion.div
-                    key={flight.flightId}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-white rounded-3xl shadow-xl shadow-ocean/5 border border-sky/5 overflow-hidden hover:border-tropical/30 transition-all group"
+                <p className="mt-4 text-sm font-bold text-ocean animate-pulse uppercase tracking-widest">Updating results...</p>
+              </div>
+            ) : error ? (
+              <div className="bg-coral/10 border border-coral/20 text-coral p-8 rounded-[2.5rem] flex items-center gap-4">
+                <AlertCircle className="w-6 h-6 shrink-0" />
+                <p className="font-bold">{error}</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {flights.length === 0 ? (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white p-24 rounded-[3rem] text-center shadow-xl border border-sky/10"
                   >
-                    <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-8">
-                      {/* Airline Info */}
-                      <div className="flex items-center gap-4 min-w-[140px]">
-                        <div className="w-12 h-12 bg-ocean rounded-xl flex items-center justify-center">
-                          <Plane className="w-6 h-6 text-white rotate-45" />
-                        </div>
-                        <div>
-                          <p className="font-black text-ocean tracking-tight">HAWAI</p>
-                          <p className="text-[10px] font-bold text-rock uppercase tracking-tighter">{flight.flightNumber}</p>
-                        </div>
-                      </div>
+                    <Plane className="w-20 h-20 text-rock/10 mx-auto mb-8 -rotate-12" />
+                    <h3 className="text-2xl font-black text-ocean mb-3">No Flights Available</h3>
+                    <p className="text-rock font-medium max-w-sm mx-auto">Try adjusting your filters or search for another date.</p>
+                    <button onClick={() => {setSource(''); setDestination(''); setDate(''); setTimeOfDay(undefined); setExtraBaggageOnly(false); fetchFlights();}} className="mt-8 text-tropical font-black uppercase tracking-widest text-xs hover:underline">Clear all filters</button>
+                  </motion.div>
+                ) : (
+                  flights.map((flight, idx) => (
+                    <motion.div
+                      key={flight.flightId}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="bg-white rounded-[2.5rem] shadow-xl shadow-ocean/5 border border-sky/5 overflow-hidden hover:border-tropical/30 transition-all group"
+                    >
+                      <div className="p-8 md:p-10">
+                        <div className="flex flex-col lg:flex-row items-center gap-12">
+                          {/* Airline & ID */}
+                          <div className="flex items-center gap-5 min-w-[160px]">
+                            <div className="w-14 h-14 bg-ocean rounded-2xl flex items-center justify-center shadow-lg shadow-ocean/10 group-hover:scale-110 transition-transform duration-500">
+                              <Plane className="w-7 h-7 text-white rotate-45" />
+                            </div>
+                            <div>
+                              <p className="text-xl font-black text-ocean tracking-tighter">HAWAI</p>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-black text-rock uppercase tracking-widest">{flight.flightNumber}</span>
+                                <span className="w-1 h-1 rounded-full bg-sky" />
+                                <span className="text-[10px] font-bold text-tropical">A320</span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Journey Details */}
-                      <div className="flex-1 flex items-center justify-between gap-4 w-full">
-                        <div className="text-center md:text-left">
-                          <p className="text-2xl font-black text-ocean">
-                            {new Date(flight.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          <p className="text-sm font-bold text-rock">{flight.source}</p>
-                        </div>
+                          {/* Timeline */}
+                          <div className="flex-1 flex items-center justify-between gap-6 w-full">
+                            <div className="text-center lg:text-left">
+                              <p className="text-3xl font-black text-ocean">
+                                {new Date(flight.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              <p className="text-sm font-black text-rock uppercase tracking-widest mt-1">{flight.source}</p>
+                            </div>
 
-                        <div className="flex-1 flex flex-col items-center">
-                          <p className="text-[10px] font-bold text-rock/40 uppercase tracking-widest mb-1">Direct</p>
-                          <div className="w-full flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-sky" />
-                            <div className="flex-1 h-px bg-gradient-to-r from-sky via-tropical/20 to-sky" />
-                            <Plane className="w-4 h-4 text-tropical" />
-                            <div className="flex-1 h-px bg-gradient-to-r from-sky via-tropical/20 to-sky" />
-                            <div className="w-2 h-2 rounded-full bg-sky" />
+                            <div className="flex-1 flex flex-col items-center">
+                              <p className="text-[10px] font-black text-rock/30 uppercase tracking-[0.3em] mb-3">2h 15m</p>
+                              <div className="w-full flex items-center gap-3">
+                                <div className="w-2.5 h-2.5 rounded-full border-2 border-sky" />
+                                <div className="flex-1 h-px bg-gradient-to-r from-sky via-tropical/30 to-sky border-dashed border-sky/20" />
+                                <Plane className="w-5 h-5 text-tropical group-hover:translate-x-2 transition-transform duration-700" />
+                                <div className="flex-1 h-px bg-gradient-to-r from-sky via-tropical/30 to-sky border-dashed border-sky/20" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-tropical shadow-lg shadow-tropical/20" />
+                              </div>
+                              <p className="text-[10px] font-bold text-jungle uppercase tracking-widest mt-3">Direct Flight</p>
+                            </div>
+
+                            <div className="text-center lg:text-right">
+                              <p className="text-3xl font-black text-ocean">
+                                {new Date(flight.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              <p className="text-sm font-black text-rock uppercase tracking-widest mt-1">{flight.destination}</p>
+                            </div>
+                          </div>
+
+                          {/* Pricing & CTA */}
+                          <div className="flex flex-col items-center lg:items-end gap-4 min-w-[200px] lg:border-l lg:border-sky/10 lg:pl-12">
+                            <div className="text-right">
+                              <p className="text-[10px] font-black text-rock/40 uppercase tracking-widest line-through mb-1">$299</p>
+                              <p className="text-4xl font-black text-ocean tracking-tighter">$199</p>
+                              <p className="text-[9px] font-bold text-rock uppercase mt-1">Per Adult</p>
+                            </div>
+                            <Link
+                              to={`/flights/${flight.flightId}`}
+                              className="w-full bg-ocean hover:bg-tropical text-white text-xs font-black py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-ocean/10"
+                            >
+                              Book Now
+                              <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                            </Link>
                           </div>
                         </div>
 
-                        <div className="text-center md:text-right">
-                          <p className="text-2xl font-black text-ocean">
-                            {new Date(flight.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          <p className="text-sm font-bold text-rock">{flight.destination}</p>
+                        {/* Amenities Row */}
+                        <div className="mt-10 pt-6 border-t border-sky/5 flex flex-wrap items-center justify-between gap-6">
+                          <div className="flex items-center gap-8">
+                            <div className="flex items-center gap-2 group/icon">
+                              <Luggage className="w-4 h-4 text-rock/40 group-hover/icon:text-tropical transition-colors" />
+                              <span className="text-[10px] font-bold text-rock uppercase tracking-widest">7kg Cabin</span>
+                            </div>
+                            <div className="flex items-center gap-2 group/icon">
+                              <Briefcase className="w-4 h-4 text-rock/40 group-hover/icon:text-tropical transition-colors" />
+                              <span className="text-[10px] font-bold text-rock uppercase tracking-widest">15kg Check-in</span>
+                            </div>
+                            <div className="flex items-center gap-2 group/icon">
+                              <Clock className="w-4 h-4 text-rock/40 group-hover/icon:text-tropical transition-colors" />
+                              <span className="text-[10px] font-bold text-jungle uppercase tracking-widest">On Time</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="px-3 py-1 bg-cloud rounded-lg text-[9px] font-black text-ocean uppercase tracking-widest border border-sky/10">Standard Fare</span>
+                            <span className="text-[10px] font-bold text-tropical hover:underline cursor-pointer">Fare Rules & Benefits</span>
+                          </div>
                         </div>
                       </div>
-
-                      {/* Price and CTA */}
-                      <div className="flex flex-col items-center md:items-end gap-3 min-w-[160px] border-t md:border-t-0 md:border-l border-sky/10 pt-6 md:pt-0 md:pl-8">
-                        <p className="text-xs font-bold text-rock uppercase">Starting from</p>
-                        <p className="text-3xl font-black text-ocean">$199</p>
-                        <Link
-                          to={`/flights/${flight.flightId}`}
-                          className="w-full bg-ocean hover:bg-tropical text-white text-sm font-black py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 group/btn shadow-lg shadow-ocean/10"
-                        >
-                          Book Now
-                          <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                        </Link>
-                      </div>
-                    </div>
-                    
-                    {/* Status Bar */}
-                    <div className="bg-cloud px-8 py-2.5 flex items-center justify-between border-t border-sky/5">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${flight.status === 'SCHEDULED' ? 'bg-jungle' : 'bg-coral'} animate-pulse`} />
-                        <p className="text-[10px] font-bold text-ocean/60 uppercase tracking-widest">
-                          {flight.status.replace('_', ' ')}
-                        </p>
-                      </div>
-                      <p className="text-[10px] font-bold text-tropical uppercase tracking-widest">Premium Class Available</p>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            )}
           </div>
         </div>
       </div>

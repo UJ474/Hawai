@@ -7,21 +7,40 @@ const router = Router();
 const createBookingSchema = z.object({
   flightId: z.string().min(1),
   passengerId: z.string().min(1),
-  seatNumber: z.string().min(1),
-  price: z.number().positive(),
+  seats: z.array(z.object({
+    seatNumber: z.string().min(1),
+    price: z.number().positive(),
+  })),
 });
 
 router.post("/", async (req, res, next) => {
   try {
     const parsed = createBookingSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Validation failed", details: parsed.error });
-      return;
-    }
-    const { flightId, passengerId, seatNumber, price } = parsed.data;
+      // Fallback for single seat booking to maintain compatibility if needed
+      const singleParsed = z.object({
+        flightId: z.string().min(1),
+        passengerId: z.string().min(1),
+        seatNumber: z.string().min(1),
+        price: z.number().positive(),
+      }).safeParse(req.body);
 
-    const booking = await bookingService.create(flightId, passengerId, seatNumber, price);
-    res.status(201).json(booking);
+      if (!singleParsed.success) {
+        res.status(400).json({ error: "Validation failed", details: parsed.error });
+        return;
+      }
+      
+      const { flightId, passengerId, seatNumber, price } = singleParsed.data;
+      const booking = await bookingService.create(flightId, passengerId, seatNumber, price);
+      return res.status(201).json(booking);
+    }
+
+    const { flightId, passengerId, seats } = parsed.data;
+    const seatNumbers = seats.map(s => s.seatNumber);
+    const prices = seats.map(s => s.price);
+
+    const bookings = await bookingService.createMany(flightId, passengerId, seatNumbers, prices);
+    res.status(201).json(bookings);
   } catch (err) {
     next(err);
   }
