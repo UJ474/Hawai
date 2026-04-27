@@ -15,11 +15,9 @@ const LoginPage: React.FC = () => {
     setError(null);
     try {
       const response = await authService.login(data.email, data.password);
-      if (response.token) {
-        // In a real app, you might decode the token to get user data or fetch it separately
-        // For now, we'll just store a dummy user object for context.
-        login(response.token, { id: "1", name: "User", email: data.email }); 
-        navigate("/"); // Redirect to home page or dashboard
+      if (response.token && response.user) {
+        login(response.token, response.user); 
+        navigate("/"); 
       } else if (response.error) {
         setError(typeof response.error === "string" ? response.error : JSON.stringify(response.error));
       } else {
@@ -33,16 +31,22 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <AuthForm isSignup={false} onSubmit={handleSubmit} isLoading={isLoading} error={error} />
-      <div className="absolute bottom-4 text-center">
-        <p className="text-gray-600">
-          Don't have an account?{" "}
-          <Link to="/signup" className="text-blue-500 hover:underline">
-            Sign Up
-          </Link>
-        </p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky/20 via-cloud to-tropical/10 p-6">
+      <div className="mb-8 flex items-center gap-2">
+        <div className="w-10 h-10 bg-tropical rounded-xl flex items-center justify-center shadow-lg shadow-tropical/20">
+          <span className="text-white font-bold text-xl">H</span>
+        </div>
+        <h1 className="text-2xl font-bold text-ocean tracking-tight">Hawai</h1>
       </div>
+      
+      <AuthForm isSignup={false} onSubmit={handleSubmit} isLoading={isLoading} error={error} />
+      
+      <p className="mt-8 text-rock font-medium">
+        Don't have an account?{" "}
+        <Link to="/signup" className="text-tropical hover:text-ocean font-bold transition-colors">
+          Create one for free
+        </Link>
+      </p>
     </div>
   );
 };

@@ -1,14 +1,18 @@
 import { Router, Request, Response } from "express";
+import "dotenv/config";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { passengerService } from "../services/PassengerService.js";
 import { z } from "zod";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is missing");
-}
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is missing");
+  }
+  return secret;
+};
 
 const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -68,11 +72,12 @@ router.post("/login", async (req: Request, res: Response, next): Promise<void> =
 
     const token = jwt.sign(
       { id: passenger.id, email: passenger.email },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "1h" }
     );
 
-    res.json({ message: "Login successful", token });
+    const { password: _, ...userWithoutPassword } = passenger;
+    res.json({ message: "Login successful", token, user: userWithoutPassword });
   } catch (err) {
     next(err);
   }

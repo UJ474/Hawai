@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import cors from "cors";
 import passengerRoutes from "./routes/passenger.js";
 import aircraftRoutes from "./routes/aircraft.js";
 import flightRoutes from "./routes/flight.js";
@@ -12,6 +13,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 const PORT = process.env["PORT"] ?? 3000;
 
+app.use(cors());
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
