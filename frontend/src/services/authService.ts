@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 interface AuthResponse {
   message: string;
@@ -31,6 +31,17 @@ export const authService = {
       },
       body: JSON.stringify({ email, password }),
     });
+    return response.json();
+  },
+
+  async getProfile(): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    if (!response.ok) throw new Error("Failed to fetch profile");
     return response.json();
   },
 

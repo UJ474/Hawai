@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { passengerService } from "../services/PassengerService.js";
 import { z } from "zod";
+import { authenticateToken, AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -68,12 +69,41 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
     }
 
     const token = jwt.sign(
-      { id: passenger.id, email: passenger.email },
+      { id: passenger.id, email: passenger.email, name: passenger.name },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "24h" }
     );
 
-    res.json({ message: "Login successful", token });
+    // Return user data along with token
+    res.json({
+      message: "Login successful",
+      token,
+      user: {
+        id: passenger.id,
+        name: passenger.name,
+        email: passenger.email,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: message });
+  }
+});
+
+// Get current user profile
+router.get("/me", authenticateToken, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const passenger = await passengerService.findById(req.user.id);
+    if (!passenger) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    const { password: _, ...userWithoutPassword } = passenger;
+    res.json(userWithoutPassword);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: message });

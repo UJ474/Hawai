@@ -20,46 +20,56 @@ export class BookingService {
     flightId: string;
     passengerId: string;
     seatId: string;
+    price: number;
     status: string;
-  }): Booking {
-    return new Booking(
+  }): Booking & { price: number } {
+    const booking = new Booking(
       record.id,
       record.flightId,
       record.passengerId,
       record.seatId,
       record.status as BookingStatus
     );
+    // Attach price as an extra property for API responses
+    return Object.assign(booking, { price: record.price });
   }
 
   // ── Public API (used by routes) ────────────────────────────────────────────
 
   /**
-   * Create a new booking (route-facing alias with flat args).
-   * passengerId here is the DB id of an existing passenger.
+   * Create a new booking.
+   * Accepts seatNumber (e.g. "1A") and resolves the actual seat record by flightId + seatNumber.
    */
   public async create(
     flightId: string,
     passengerId: string,
-    seatId: string,
-    _price: number // kept for schema compatibility, stored on DB record
+    seatNumber: string,
+    price: number
   ): Promise<Booking> {
     return await prisma.$transaction(async (tx) => {
-      // Ensure seat exists and is free
-      const seatRecord = await tx.seat.findUnique({ where: { id: seatId } });
-      if (!seatRecord) throw new Error("Seat does not exist.");
+      // Look up the seat by flightId + seatNumber
+      const seatRecord = await tx.seat.findUnique({
+        where: {
+          flightId_seatNumber: {
+            flightId: flightId,
+            seatNumber: seatNumber,
+          },
+        },
+      });
+      if (!seatRecord) throw new Error("Seat does not exist for this flight.");
       if (seatRecord.isBooked) throw new Error("Seat is already booked.");
 
       // Lock the seat
-      await tx.seat.update({ where: { id: seatId }, data: { isBooked: true } });
+      await tx.seat.update({ where: { id: seatRecord.id }, data: { isBooked: true } });
 
       // Persist booking
       const record = await tx.booking.create({
         data: {
           flightId,
           passengerId,
-          seatId,
+          seatId: seatRecord.id,
           status: BookingStatus.CONFIRMED,
-          price: _price,
+          price: price,
         },
       });
 
@@ -67,22 +77,115 @@ export class BookingService {
     });
   }
 
-  /** Return all bookings. */
-  public async findAll(): Promise<Booking[]> {
-    const records = await prisma.booking.findMany();
-    return records.map((r) => this.mapRecord(r));
+  /** Return all bookings with flight and seat details. */
+  public async findAll(): Promise<any[]> {
+    const records = await prisma.booking.findMany({
+      include: {
+        flight: true,
+        seat: true,
+      },
+    });
+    return records.map((r) => ({
+      bookingId: r.id,
+      flightId: r.flightId,
+      passengerId: r.passengerId,
+      seatId: r.seatId,
+      price: r.price,
+      status: r.status,
+      createdAt: r.createdAt,
+      flight: r.flight ? {
+        source: r.flight.source,
+        destination: r.flight.destination,
+        departureTime: r.flight.departureTime,
+        arrivalTime: r.flight.arrivalTime,
+        flightNumber: r.flight.flightNumber,
+        status: r.flight.status,
+      } : null,
+      seat: r.seat ? {
+        seatNumber: r.seat.seatNumber,
+        seatType: r.seat.type,
+      } : null,
+    }));
   }
 
-  /** Find a single booking by its ID. */
-  public async findById(id: string): Promise<Booking | null> {
-    const record = await prisma.booking.findUnique({ where: { id } });
-    return record ? this.mapRecord(record) : null;
+  /** Find a single booking by its ID with details. */
+  public async findById(id: string): Promise<any | null> {
+    const r = await prisma.booking.findUnique({
+      where: { id },
+      include: {
+        flight: true,
+        seat: true,
+        payment: true,
+      },
+    });
+    if (!r) return null;
+    return {
+      bookingId: r.id,
+      flightId: r.flightId,
+      passengerId: r.passengerId,
+      seatId: r.seatId,
+      price: r.price,
+      status: r.status,
+      createdAt: r.createdAt,
+      flight: r.flight ? {
+        source: r.flight.source,
+        destination: r.flight.destination,
+        departureTime: r.flight.departureTime,
+        arrivalTime: r.flight.arrivalTime,
+        flightNumber: r.flight.flightNumber,
+        status: r.flight.status,
+      } : null,
+      seat: r.seat ? {
+        seatNumber: r.seat.seatNumber,
+        seatType: r.seat.type,
+      } : null,
+      payment: r.payment ? {
+        paymentId: r.payment.id,
+        amount: r.payment.amount,
+        method: r.payment.paymentMethod,
+        status: r.payment.status,
+      } : null,
+    };
   }
 
-  /** Find all bookings for a specific passenger. */
-  public async findByPassengerId(passengerId: string): Promise<Booking[]> {
-    const records = await prisma.booking.findMany({ where: { passengerId } });
-    return records.map((r) => this.mapRecord(r));
+  /** Find all bookings for a specific passenger with details. */
+  public async findByPassengerId(passengerId: string): Promise<any[]> {
+    const records = await prisma.booking.findMany({
+      where: { passengerId },
+      include: {
+        flight: true,
+        seat: true,
+        payment: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return records.map((r) => ({
+      bookingId: r.id,
+      flightId: r.flightId,
+      passengerId: r.passengerId,
+      seatId: r.seatId,
+      price: r.price,
+      status: r.status,
+      createdAt: r.createdAt,
+      flight: r.flight ? {
+        source: r.flight.source,
+        destination: r.flight.destination,
+        departureTime: r.flight.departureTime,
+        arrivalTime: r.flight.arrivalTime,
+        flightNumber: r.flight.flightNumber,
+        status: r.flight.status,
+      } : null,
+      seat: r.seat ? {
+        seatNumber: r.seat.seatNumber,
+        seatType: r.seat.type,
+      } : null,
+      payment: r.payment ? {
+        paymentId: r.payment.id,
+        amount: r.payment.amount,
+        method: r.payment.paymentMethod,
+        status: r.payment.status,
+      } : null,
+    }));
   }
 
   /** Cancel a booking and free its seat. */

@@ -65,13 +65,15 @@ export class FlightService {
     date?: string;
   }): Promise<Flight[]> {
     const where: any = {};
-    if (filters?.source) where.source = filters.source;
-    if (filters?.destination) where.destination = filters.destination;
+    if (filters?.source) where.source = { contains: filters.source };
+    if (filters?.destination) where.destination = { contains: filters.destination };
     if (filters?.date) {
       const d = new Date(filters.date);
+      const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
       where.departureTime = {
-        gte: new Date(d.setHours(0, 0, 0, 0)),
-        lt: new Date(d.setHours(23, 59, 59, 999)),
+        gte: startOfDay,
+        lt: endOfDay,
       };
     }
     const records = await prisma.flight.findMany({ where, include: { seats: true } });

@@ -1,14 +1,31 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 export interface Booking {
   bookingId: string;
   flightId: string;
   passengerId: string;
   seatId: string;
+  price: number;
   status: "CONFIRMED" | "CANCELED" | "PENDING" | "EXPIRED";
-  // Potentially include flight and passenger details for display
-  // flight: Flight;
-  // passenger: Passenger;
+  createdAt?: string;
+  flight?: {
+    source: string;
+    destination: string;
+    departureTime: string;
+    arrivalTime: string;
+    flightNumber: string;
+    status: string;
+  };
+  seat?: {
+    seatNumber: string;
+    seatType: string;
+  };
+  payment?: {
+    paymentId: string;
+    amount: number;
+    method: string;
+    status: string;
+  } | null;
 }
 
 export const bookingService = {

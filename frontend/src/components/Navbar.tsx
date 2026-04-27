@@ -15,21 +15,23 @@ const Navbar: React.FC = () => {
     <nav className="bg-gray-800 p-4 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         <Link to="/" className="text-white text-2xl font-bold">
-          Hawai Airlines
+          ✈️ Hawai Airlines
         </Link>
         <div className="flex items-center">
           {isAuthenticated ? (
             <>
-              <span className="text-gray-300 mr-4">Hello, {user?.name || user?.email}!</span>
               <Link to="/flights" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                 Flights
               </Link>
-              <Link to="/my-bookings" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium ml-2">
+              <Link to="/my-bookings" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
                 My Bookings
+              </Link>
+              <Link to="/profile" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                👤 {user?.name || 'Profile'}
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium ml-4"
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium ml-2"
               >
                 Logout
               </button>

@@ -7,8 +7,9 @@ import FlightListPage from "./pages/FlightListPage";
 import FlightDetailPage from "./pages/FlightDetailPage";
 import BookingConfirmationPage from "./pages/BookingConfirmationPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
-import PaymentPage from "./pages/PaymentPage"; // Import new page
-import PaymentSuccessPage from "./pages/PaymentSuccessPage"; // Import new page
+import PaymentPage from "./pages/PaymentPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import ProfilePage from "./pages/ProfilePage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import "./App.css";
@@ -61,7 +62,7 @@ function App() {
           }
         />
         <Route
-          path="/pay/:bookingId" // New route for Payment Page
+          path="/pay/:bookingId"
           element={
             <ProtectedRoute>
               <PaymentPage />
@@ -69,14 +70,21 @@ function App() {
           }
         />
         <Route
-          path="/payment-success/:paymentId" // New route for Payment Success Page
+          path="/payment-success/:paymentId"
           element={
             <ProtectedRoute>
               <PaymentSuccessPage />
             </ProtectedRoute>
           }
         />
-        {/* Add other routes here as they are developed */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </>
   );

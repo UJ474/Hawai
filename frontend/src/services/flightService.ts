@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 export interface Flight {
   flightId: string;
@@ -8,7 +8,7 @@ export interface Flight {
   arrivalTime: string; // ISO date string
   status: "ON_TIME" | "DELAYED" | "CANCELLED" | "SCHEDULED";
   aircraftId: string;
-  seats?: Seat[]; // Optional, might be populated on detail view
+  seats?: Seat[]; // Populated on detail view
 }
 
 export interface Seat {
@@ -54,7 +54,4 @@ export const flightService = {
     }
     return response.json();
   },
-
-  // Add more flight-related services (e.g., create, update, delete) as needed,
-  // potentially with admin roles check.
 };

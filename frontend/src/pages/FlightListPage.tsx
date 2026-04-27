@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { flightService, Flight } from "../services/flightService";
 import { useAuth } from "../context/AuthContext";
-import Navbar from "../components/Navbar";
 
 const FlightListPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -42,6 +41,14 @@ const FlightListPage: React.FC = () => {
     fetchFlights();
   };
 
+  const handleClearFilters = () => {
+    setSource("");
+    setDestination("");
+    setDate("");
+    // Fetch all flights after clearing
+    setTimeout(() => fetchFlights(), 0);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
@@ -56,56 +63,67 @@ const FlightListPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Navbar />
       <div className="container mx-auto p-4">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Available Flights</h1>
 
-        <form onSubmit={handleSearch} className="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[150px]">
-            <label htmlFor="source" className="block text-gray-700 text-sm font-bold mb-2">
-              Source:
-            </label>
-            <input
-              type="text"
-              id="source"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              placeholder="e.g., New York"
-            />
+        {/* Search form */}
+        <form onSubmit={handleSearch} className="bg-white p-6 rounded-lg shadow-md mb-8">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[150px]">
+              <label htmlFor="source" className="block text-gray-700 text-sm font-bold mb-2">
+                Origin:
+              </label>
+              <input
+                type="text"
+                id="source"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder="e.g., New York"
+              />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">
+                Destination:
+              </label>
+              <input
+                type="text"
+                id="destination"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+                placeholder="e.g., Los Angeles"
+              />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
+                Date:
+              </label>
+              <input
+                type="date"
+                id="date"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={loading}
+              >
+                {loading ? "Searching..." : "Search Flights"}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-          <div className="flex-1 min-w-[150px]">
-            <label htmlFor="destination" className="block text-gray-700 text-sm font-bold mb-2">
-              Destination:
-            </label>
-            <input
-              type="text"
-              id="destination"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              placeholder="e.g., Los Angeles"
-            />
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <label htmlFor="date" className="block text-gray-700 text-sm font-bold mb-2">
-              Date:
-            </label>
-            <input
-              type="date"
-              id="date"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 self-end"
-            disabled={loading}
-          >
-            {loading ? "Searching..." : "Search Flights"}
-          </button>
         </form>
 
         {error && (
@@ -123,7 +141,7 @@ const FlightListPage: React.FC = () => {
             <div key={flight.flightId} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="p-5">
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  {flight.source} to {flight.destination}
+                  {flight.source} → {flight.destination}
                 </h2>
                 <p className="text-gray-600 mb-1">
                   Departure: {new Date(flight.departureTime).toLocaleString()}
@@ -138,7 +156,7 @@ const FlightListPage: React.FC = () => {
                   to={`/flights/${flight.flightId}`}
                   className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 >
-                  View Details
+                  Book Now
                 </Link>
               </div>
             </div>

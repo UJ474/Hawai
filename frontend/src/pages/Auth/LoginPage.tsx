@@ -15,11 +15,18 @@ const LoginPage: React.FC = () => {
     setError(null);
     try {
       const response = await authService.login(data.email, data.password);
-      if (response.token) {
-        // In a real app, you might decode the token to get user data or fetch it separately
-        // For now, we'll just store a dummy user object for context.
-        login(response.token, { id: "1", name: "User", email: data.email }); 
-        navigate("/"); // Redirect to home page or dashboard
+      if (response.token && response.user) {
+        login(response.token, response.user);
+        navigate("/"); // Redirect to home page
+      } else if (response.token) {
+        // Fallback: decode user from token if user data not in response
+        const payload = JSON.parse(atob(response.token.split(".")[1]));
+        login(response.token, {
+          id: payload.id,
+          name: payload.name || data.email.split("@")[0],
+          email: payload.email || data.email,
+        });
+        navigate("/");
       } else if (response.error) {
         setError(typeof response.error === "string" ? response.error : JSON.stringify(response.error));
       } else {

@@ -1,30 +1,58 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authService } from "../services/authService";
 
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { id: string; name: string; email: string } | null;
-  login: (token: string, userData: { id: string; name: string; email: string }) => void;
+  user: UserData | null;
+  login: (token: string, userData: UserData) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Decode a JWT token to extract the payload (no verification - that's the server's job) */
+function decodeToken(token: string): UserData | null {
+  try {
+    const payload = token.split(".")[1];
+    const decoded = JSON.parse(atob(payload));
+    return {
+      id: decoded.id,
+      name: decoded.name || decoded.email?.split("@")[0] || "User",
+      email: decoded.email,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authService.isAuthenticated());
-  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<UserData | null>(null);
 
+  // On mount, check if we have a stored token and decode user from it
   useEffect(() => {
-    // Optionally, parse user data from token or local storage on initial load
-    // For now, we'll keep it simple and just check authentication status
-    if (isAuthenticated) {
-      // In a real app, you'd decode the token to get user info or fetch user profile
-      // For this example, let's assume user info is part of the login response
-      // and needs to be stored separately or decoded from the token.
+    const token = authService.getToken();
+    if (token) {
+      const userData = decodeToken(token);
+      if (userData) {
+        setIsAuthenticated(true);
+        setUser(userData);
+      } else {
+        // Invalid token, clear it
+        authService.removeToken();
+        setIsAuthenticated(false);
+        setUser(null);
+      }
     }
-  }, [isAuthenticated]);
+  }, []);
 
-  const login = (token: string, userData: { id: string; name: string; email: string }) => {
+  const login = (token: string, userData: UserData) => {
     authService.setToken(token);
     setIsAuthenticated(true);
     setUser(userData);
