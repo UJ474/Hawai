@@ -13,11 +13,33 @@ import { errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 const PORT = process.env["PORT"] ?? 3000;
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://hawai-airlines.vercel.app",
+];
+
+// Manual CORS headers — guaranteed to run before anything else
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "https://hawai-airlines.vercel.app"],
+  origin: allowedOrigins,
   credentials: true,
 }));
-app.options('*', cors());
+app.options("*", cors());
 
 app.use(express.json());
 
@@ -25,18 +47,17 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.use("/api/auth", authRoutes); // Public endpoints for signup/login
-app.use("/api/passengers", authenticateToken, passengerRoutes); // Protected mapping
+app.use("/api/auth", authRoutes);
+app.use("/api/passengers", authenticateToken, passengerRoutes);
 app.use("/api/aircrafts", aircraftRoutes);
 app.use("/api/flights", flightRoutes);
-app.use("/api/bookings", authenticateToken, bookingRoutes); // Protected mapping
-app.use("/api/payments", authenticateToken, paymentRoutes); // Protected mapping
+app.use("/api/bookings", authenticateToken, bookingRoutes);
+app.use("/api/payments", authenticateToken, paymentRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
 
-// Centralized Error Handler
 app.use(errorHandler);
 
 app.listen(PORT, () => {
