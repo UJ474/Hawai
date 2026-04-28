@@ -1,4 +1,9 @@
 node_modules
+dist
+dist/
+dev.db
+*.db
+
 # Keep environment variables out of version control
 .env
 

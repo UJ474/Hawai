@@ -93,17 +93,18 @@ const FlightListPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-cloud pb-20">
-      {/* Search Header */}
-      <div className="bg-ocean pt-32 pb-16 px-6">
+      {/* MMT Style Edit Search Header */}
+      <div className="bg-gradient-to-r from-[#0a192f] to-[#112240] pt-28 pb-8 px-6 shadow-xl relative z-20">
         <div className="container mx-auto">
-          <form onSubmit={handleSearch} className="bg-white p-4 rounded-[2rem] shadow-2xl flex flex-wrap lg:flex-nowrap gap-4 items-end border border-white/10">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] font-black text-ocean uppercase tracking-widest mb-1.5 ml-4">Origin</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tropical" />
+          <form onSubmit={handleSearch} className="bg-white/10 backdrop-blur-md p-3 rounded-2xl flex flex-wrap lg:flex-nowrap gap-2 items-center border border-white/10">
+            
+            <div className="flex-1 min-w-[200px] bg-white rounded-xl p-2 px-4 flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-rock/50" />
+              <div className="flex-1">
+                <label className="block text-[9px] font-bold text-rock uppercase tracking-widest">From</label>
                 <input
                   type="text"
-                  className="w-full bg-cloud border-none rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-ocean focus:ring-2 focus:ring-tropical/20"
+                  className="w-full bg-transparent border-none p-0 text-sm font-black text-ocean focus:ring-0"
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
                   placeholder="Where from?"
@@ -111,17 +112,17 @@ const FlightListPage: React.FC = () => {
               </div>
             </div>
             
-            <div className="hidden lg:flex items-center justify-center mb-3">
-              <ArrowRightLeft className="w-5 h-5 text-rock/30" />
+            <div className="hidden lg:flex items-center justify-center px-2">
+              <ArrowRightLeft className="w-4 h-4 text-white/50" />
             </div>
 
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-[10px] font-black text-ocean uppercase tracking-widest mb-1.5 ml-4">Destination</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tropical" />
+            <div className="flex-1 min-w-[200px] bg-white rounded-xl p-2 px-4 flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-rock/50" />
+              <div className="flex-1">
+                <label className="block text-[9px] font-bold text-rock uppercase tracking-widest">To</label>
                 <input
                   type="text"
-                  className="w-full bg-cloud border-none rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-ocean focus:ring-2 focus:ring-tropical/20"
+                  className="w-full bg-transparent border-none p-0 text-sm font-black text-ocean focus:ring-0"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   placeholder="Where to?"
@@ -129,31 +130,71 @@ const FlightListPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-[10px] font-black text-ocean uppercase tracking-widest mb-1.5 ml-4">Date</label>
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-tropical" />
+            <div className="flex-1 min-w-[150px] bg-white rounded-xl p-2 px-4 flex items-center gap-3">
+              <Calendar className="w-4 h-4 text-rock/50" />
+              <div className="flex-1 relative">
+                <label className="block text-[9px] font-bold text-rock uppercase tracking-widest">Depart</label>
                 <input
                   type="date"
-                  className="w-full bg-cloud border-none rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-ocean focus:ring-2 focus:ring-tropical/20"
+                  className="w-full bg-transparent border-none p-0 text-sm font-black text-ocean focus:ring-0 absolute inset-0 opacity-0 cursor-pointer"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
+                <div className="text-sm font-black text-ocean">{date ? new Date(date).toLocaleDateString('default', { day: '2-digit', month: 'short', year: '2-digit' }) : 'Select Date'}</div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[150px] bg-white rounded-xl p-2 px-4 flex items-center gap-3 opacity-60">
+              <Calendar className="w-4 h-4 text-rock/50" />
+              <div className="flex-1">
+                <label className="block text-[9px] font-bold text-rock uppercase tracking-widest">Return</label>
+                <div className="text-sm font-black text-ocean">Book Round Trip</div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-[150px] bg-white rounded-xl p-2 px-4 flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-[9px] font-bold text-rock uppercase tracking-widest">Travellers & Class</label>
+                <div className="text-sm font-black text-ocean truncate">1 Adult, Economy</div>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full lg:w-auto bg-sunset hover:bg-coral text-white font-black py-3 px-10 rounded-xl transition-all shadow-lg shadow-sunset/20 whitespace-nowrap"
+              className="bg-gradient-to-r from-tropical to-ocean hover:opacity-90 text-white font-black py-4 px-10 rounded-xl transition-all shadow-lg uppercase tracking-widest text-xs"
               disabled={loading}
             >
-              {loading ? "Searching..." : "Update Results"}
+              {loading ? "..." : "Search"}
             </button>
           </form>
         </div>
       </div>
 
-      <div className="container mx-auto px-6 -mt-8">
+      <div className="container mx-auto px-6 mt-6">
+        
+        {/* Date Carousel */}
+        <div className="bg-white rounded-2xl shadow-sm border border-sky/10 mb-6 flex overflow-hidden">
+          <button className="px-3 bg-cloud/50 hover:bg-cloud flex items-center justify-center border-r border-sky/10 transition-colors">
+            <ChevronRight className="w-5 h-5 text-rock rotate-180" />
+          </button>
+          <div className="flex-1 flex overflow-x-auto custom-scrollbar">
+            {[...Array(7)].map((_, i) => {
+              const d = new Date(date || new Date());
+              d.setDate(d.getDate() + i - 3);
+              const isSelected = i === 3;
+              return (
+                <div key={i} className={`flex-1 min-w-[100px] text-center py-3 border-r border-sky/5 cursor-pointer transition-colors ${isSelected ? 'bg-ocean text-white' : 'hover:bg-sky/5'}`}>
+                  <p className={`text-[10px] font-bold uppercase ${isSelected ? 'text-white/80' : 'text-rock'}`}>{d.toLocaleDateString('default', { month: 'short', day: 'numeric' })}</p>
+                  <p className={`text-sm font-black mt-1 ${isSelected ? 'text-white' : 'text-ocean'}`}>$199</p>
+                </div>
+              );
+            })}
+          </div>
+          <button className="px-3 bg-cloud/50 hover:bg-cloud flex items-center justify-center border-l border-sky/10 transition-colors">
+            <ChevronRight className="w-5 h-5 text-rock" />
+          </button>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}
           <div className="lg:w-72 space-y-6">
@@ -231,6 +272,36 @@ const FlightListPage: React.FC = () => {
                       <input type="checkbox" disabled className="w-5 h-5 rounded-lg border-2 border-sky/30" />
                       <span className="text-xs font-bold text-ocean">Refundable Fare</span>
                     </label>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-sky/10">
+                  <label className="text-xs font-black text-rock uppercase tracking-widest mb-4 block">Stops</label>
+                  <div className="space-y-3">
+                    {['Non Stop', '1 Stop', '2+ Stops'].map((stop, i) => (
+                      <label key={i} className="flex items-center justify-between cursor-pointer group">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" defaultChecked={i===0} className="w-4 h-4 rounded border-2 border-sky/30 text-ocean focus:ring-ocean" />
+                          <span className="text-xs font-bold text-ocean group-hover:text-tropical transition-colors">{stop}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-rock">$199</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-sky/10">
+                  <label className="text-xs font-black text-rock uppercase tracking-widest mb-4 block">Airlines</label>
+                  <div className="space-y-3">
+                    {['Hawai Air', 'IndiGo', 'Vistara', 'Air India'].map((airline, i) => (
+                      <label key={i} className="flex items-center justify-between cursor-pointer group">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" defaultChecked={i===0} className="w-4 h-4 rounded border-2 border-sky/30 text-ocean focus:ring-ocean" />
+                          <span className="text-xs font-bold text-ocean group-hover:text-tropical transition-colors">{airline}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-rock">$199</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
