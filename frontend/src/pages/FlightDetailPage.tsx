@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { flightService, Flight, Seat } from "../services/flightService";
 import { bookingService } from "../services/bookingService";
@@ -27,29 +27,19 @@ const FlightDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  
   const [flight, setFlight] = useState<Flight | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>("ALL");
 
   useEffect(() => {
     const fetchFlightDetails = async () => {
-      if (!isAuthenticated) {
-        setError("Please log in to view flight details.");
-        setLoading(false);
-        return;
-      }
-      if (!id) {
-        setError("Flight ID is missing.");
-        setLoading(false);
-        return;
-      }
-
+      if (!id) return;
       setLoading(true);
-      setError(null);
       try {
         const fetchedFlight = await flightService.getFlightById(id);
         setFlight(fetchedFlight);
@@ -59,81 +49,160 @@ const FlightDetailPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchFlightDetails();
-  }, [id, isAuthenticated]);
+  }, [id]);
 
-  const handleSeatSelect = (seat: Seat) => {
-    setSelectedSeat(seat);
+  const getSeatPrice = (seat: Seat) => {
+    if (seat.seatType === "BUSINESS") return 499;
+    const row = parseInt(seat.seatNumber);
+    if (row <= 4) return 249;
+    if (row === 6) return 299;
+    return 199;
   };
 
-  const handleBookSeat = async () => {
-    if (!selectedSeat || !flight || !user) {
-      setBookingError("Please select a seat and ensure you are logged in.");
-      return;
-    }
+  const getSeatLabel = (seat: Seat) => {
+    if (seat.seatType === "BUSINESS") return "Business Class";
+    const row = parseInt(seat.seatNumber);
+    if (row <= 4) return "Preferred Seat";
+    if (row === 6) return "Extra Legroom";
+    return "Standard Seat";
+  };
 
+  const toggleSeatSelection = (seat: Seat) => {
+    if (selectedSeats.find(s => s.seatId === seat.seatId)) {
+      setSelectedSeats(selectedSeats.filter(s => s.seatId !== seat.seatId));
+    } else {
+      if (selectedSeats.length >= 6) {
+        alert("Maximum 6 seats allowed per booking.");
+        return;
+      }
+      setSelectedSeats([...selectedSeats, seat]);
+    }
+  };
+
+  const totalBaseFare = selectedSeats.reduce((sum, s) => sum + getSeatPrice(s), 0);
+  const convenienceFee = selectedSeats.length * 15;
+  const taxes = selectedSeats.length * 30;
+  const grandTotal = totalBaseFare + convenienceFee + taxes;
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleStartPayment = () => {
+    if (selectedSeats.length === 0) return;
+    setShowPaymentGateway(true);
+    setPaymentStep('phone');
+  };
+
+  const handleConfirmPhone = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phoneNumber.length < 10) return;
+    setPaymentStep('details');
+  };
+
+  const handleProcessPayment = () => {
+    setPaymentStep('processing');
+    setTimeout(() => setPaymentStep('otp'), 2000);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!flight || !user || selectedSeats.length === 0) return;
     setBookingLoading(true);
-    setBookingError(null);
     try {
       const price = SEAT_PRICES[selectedSeat.seatType] || 150;
       const passengerId = user.id;
 
       const newBooking = await bookingService.createBooking(
         flight.flightId,
-        passengerId,
-        selectedSeat.seatNumber,
-        price
+        user.id,
+        seatsToBook
       );
       navigate(`/booking/${newBooking.bookingId}`);
     } catch (err: any) {
-      setBookingError(err.message || "Failed to book seat.");
+      alert(err.message || "Failed to confirm booking.");
+      setShowPaymentGateway(false);
     } finally {
       setBookingLoading(false);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Flight Details</h1>
-        <p className="text-lg text-gray-600">Please log in to view flight details.</p>
-        <Link to="/login" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Login
-        </Link>
-      </div>
-    );
+  if (loading) return (
+    <div className="min-h-screen bg-cloud flex items-center justify-center">
+      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2 }}>
+        <Plane className="w-12 h-12 text-tropical" />
+      </motion.div>
+    </div>
+  );
+
+  const rows = [];
+  const seatsPerRow = 6;
+  if (flight?.seats) {
+    for (let i = 0; i < flight.seats.length; i += seatsPerRow) {
+      rows.push(flight.seats.slice(i, i + seatsPerRow));
+    }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-xl text-gray-600">Loading flight details...</p>
-      </div>
-    );
-  }
+  return (
+    <div className="min-h-screen bg-cloud pb-20 pt-28">
+      <div className="container mx-auto px-6">
+        <div className="flex flex-col lg:flex-row gap-10">
+          
+          {/* Seat Map */}
+          <div className="lg:flex-1">
+            <div className="bg-white rounded-[4rem] shadow-2xl p-10 md:p-16 border border-sky/10 relative">
+              <div className="flex items-center justify-between mb-16">
+                <div>
+                  <h2 className="text-4xl font-black text-ocean mb-2">Select Seats</h2>
+                  <p className="text-rock font-medium">Flight {flight?.flightNumber} • {selectedSeats.length > 0 ? `${selectedSeats.length} Selected` : "Choose your seat(s)"}</p>
+                </div>
+                <Link to="/flights" className="w-12 h-12 bg-cloud rounded-2xl flex items-center justify-center">
+                  <ChevronLeft className="w-6 h-6 text-ocean" />
+                </Link>
+              </div>
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-xl text-red-500">{error}</p>
-        <Link to="/flights" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Back to Flights
-        </Link>
-      </div>
-    );
-  }
-
-  if (!flight) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-xl text-gray-600">Flight not found.</p>
-        <Link to="/flights" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Back to Flights
-        </Link>
-      </div>
-    );
-  }
+              <div className="relative max-w-xl mx-auto bg-[#F8FAFC] rounded-t-[15rem] rounded-b-[6rem] p-16 border-x-[12px] border-t-[12px] border-sky/20">
+                <div className="space-y-4 relative z-10 pt-32 pb-20">
+                  {rows.map((row, rowIdx) => (
+                    <div key={rowIdx} className="flex justify-center gap-3">
+                      {row.map((seat, seatIdx) => {
+                        const isSelected = selectedSeats.find(s => s.seatId === seat.seatId);
+                        const isOccupied = seat.status === "OCCUPIED" || seat.status === "BOOKED";
+                        return (
+                          <React.Fragment key={seat.seatId}>
+                            <button
+                              disabled={isOccupied}
+                              onClick={() => toggleSeatSelection(seat)}
+                              className={`
+                                relative w-11 h-12 md:w-14 md:h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300
+                                ${isOccupied ? "bg-rock/5 cursor-not-allowed text-rock/20" : 
+                                  isSelected ? "bg-sunset text-white shadow-2xl shadow-sunset/40 scale-110 z-20" : 
+                                  "bg-white border-2 border-sky/20 text-ocean hover:border-tropical hover:text-tropical"}
+                              `}
+                            >
+                              <Armchair className={`w-5 h-5 mb-1 ${isOccupied ? "opacity-10" : ""}`} />
+                              <span className="text-[10px] font-black">{seat.seatNumber}</span>
+                            </button>
+                            {seatIdx === 2 && <div className="w-12" />}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
   const allSeats = flight.seats || [];
   const availableSeats = allSeats.filter(seat => seat.status === "AVAILABLE");
@@ -299,7 +368,7 @@ const FlightDetailPage: React.FC = () => {
             </Link>
           </div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };

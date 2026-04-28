@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import "dotenv/config";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { passengerService } from "../services/PassengerService.js";
@@ -6,10 +7,13 @@ import { z } from "zod";
 import { authenticateToken, AuthRequest } from "../middleware/auth.js";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is missing");
-}
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is missing");
+  }
+  return secret;
+};
 
 const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -22,18 +26,18 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-router.post("/signup", async (req: Request, res: Response): Promise<void> => {
+router.post("/signup", async (req: Request, res: Response, next): Promise<void> => {
   try {
     const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { name, email, password } = parsed.data;
 
     const existingUser = await passengerService.findByEmail(email);
     if (existingUser) {
-      res.status(409).json({ error: "Email is already in use" });
+      res.status(409).json({ error: "Conflict", message: "Email is already in use" });
       return;
     }
 
@@ -41,30 +45,29 @@ router.post("/signup", async (req: Request, res: Response): Promise<void> => {
 
     const { password: _, ...userWithoutPassword } = passenger;
     res.status(201).json({ message: "User registered successfully", user: userWithoutPassword });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    res.status(500).json({ error: message });
+  } catch (err) {
+    next(err);
   }
 });
 
-router.post("/login", async (req: Request, res: Response): Promise<void> => {
+router.post("/login", async (req: Request, res: Response, next): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error });
+      res.status(400).json({ error: "Validation failed", details: parsed.error });
       return;
     }
     const { email, password } = parsed.data;
 
     const passenger = await passengerService.findByEmail(email);
     if (!passenger) {
-      res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
       return;
     }
 
     const isValidPassword = await bcrypt.compare(password, passenger.password);
     if (!isValidPassword) {
-      res.status(401).json({ error: "Invalid email or password" });
+      res.status(401).json({ error: "Unauthorized", message: "Invalid email or password" });
       return;
     }
 

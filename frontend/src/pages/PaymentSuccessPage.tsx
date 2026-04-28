@@ -6,17 +6,13 @@ const PaymentSuccessPage: React.FC = () => {
   const { paymentId } = useParams<{ paymentId: string }>();
   const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Payment Status</h1>
-        <p className="text-lg text-gray-600">Please log in to view payment details.</p>
-        <Link to="/login" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Login
-        </Link>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-cloud flex items-center justify-center">
+      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+        <CheckCircle2 className="w-16 h-16 text-jungle opacity-20" />
+      </motion.div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">

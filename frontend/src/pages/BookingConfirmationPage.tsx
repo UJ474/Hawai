@@ -1,30 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { bookingService, Booking } from "../services/bookingService";
+import { 
+  CheckCircle2, 
+  Plane, 
+  MapPin, 
+  Calendar, 
+  User, 
+  Armchair, 
+  CreditCard,
+  Download,
+  ArrowRight,
+  ChevronLeft
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { bookingService } from "../services/bookingService";
+import type { Booking } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 const BookingConfirmationPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBookingDetails = async () => {
-      if (!isAuthenticated) {
-        setError("Please log in to view booking details.");
-        setLoading(false);
-        return;
-      }
-      if (!id) {
-        setError("Booking ID is missing.");
-        setLoading(false);
-        return;
-      }
-
+      if (!id) return;
       setLoading(true);
-      setError(null);
       try {
         const fetchedBooking = await bookingService.getBookingById(id);
         setBooking(fetchedBooking);
@@ -34,29 +37,25 @@ const BookingConfirmationPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchBookingDetails();
-  }, [id, isAuthenticated]);
+  }, [id]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Booking Confirmation</h1>
-        <p className="text-lg text-gray-600">Please log in to view your booking.</p>
-        <Link to="/login" className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-          Login
-        </Link>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-cloud flex items-center justify-center">
+      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }}>
+        <Plane className="w-12 h-12 text-tropical" />
+      </motion.div>
+    </div>
+  );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-xl text-gray-600">Loading booking details...</p>
+  if (error || !booking) return (
+    <div className="min-h-screen bg-cloud flex items-center justify-center p-6">
+      <div className="bg-white p-8 rounded-[2rem] shadow-2xl text-center max-w-md border border-sky/10">
+        <p className="text-xl font-bold text-ocean mb-4">{error || "Booking not found."}</p>
+        <Link to="/my-bookings" className="block w-full bg-ocean text-white font-bold py-3 rounded-xl">My Bookings</Link>
       </div>
-    );
-  }
+    </div>
+  );
 
   if (error) {
     return (

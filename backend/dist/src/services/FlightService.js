@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 import { Flight, FlightStatus, Seat, SeatStatus } from "../models/index.js";
 export class FlightService {
     static instance;
+    constructor() { }
     static getInstance() {
         if (!FlightService.instance) {
             FlightService.instance = new FlightService();

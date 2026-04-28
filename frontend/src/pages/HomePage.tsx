@@ -103,7 +103,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
         </div>
-      )}
+      </section>
     </div>
   );
 };

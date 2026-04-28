@@ -1,3 +1,4 @@
+import { SeatStatus } from "./Seat.js";
 export var FlightStatus;
 (function (FlightStatus) {
     FlightStatus["ON_TIME"] = "ON_TIME";
@@ -22,23 +23,22 @@ export class Flight {
         this.seats = seats;
     }
     getAvailableSeats() {
-        return this.seats.filter((seat) => seat.status === 'AVAILABLE'); // Assuming SeatStatus.AVAILABLE
+        return this.seats.filter((seat) => seat.getStatus() === SeatStatus.AVAILABLE);
     }
     reserveSeat(seatNumber) {
-        const seat = this.seats.find((s) => s.seatNumber === seatNumber);
-        if (seat && seat.status === 'AVAILABLE') {
+        const seat = this.seats.find((s) => s.getSeatNumber() === seatNumber);
+        if (seat && seat.getStatus() === SeatStatus.AVAILABLE) {
             seat.book();
             return true;
         }
         return false;
     }
     releaseSeat(seatNumber) {
-        const seat = this.seats.find((s) => s.seatNumber === seatNumber);
+        const seat = this.seats.find((s) => s.getSeatNumber() === seatNumber);
         if (seat) {
             seat.release();
         }
     }
-    // Getters for properties mapped to DB by Prisma
     getFlightId() { return this.flightId; }
     getSource() { return this.source; }
     getDestination() { return this.destination; }

@@ -73,7 +73,44 @@ export class BookingService {
         },
       });
 
-      return this.mapRecord(record);
+  public async createMany(
+    flightId: string,
+    passengerId: string,
+    seatIds: string[],
+    prices: number[]
+  ): Promise<Booking[]> {
+    return await prisma.$transaction(async (tx) => {
+      const bookings: Booking[] = [];
+      
+      for (let i = 0; i < seatIds.length; i++) {
+        const seatId = seatIds[i];
+        const price = prices[i];
+
+        let seatRecord = await tx.seat.findUnique({ where: { id: seatId } });
+        if (!seatRecord) {
+          seatRecord = await tx.seat.findUnique({
+            where: { flightId_seatNumber: { flightId, seatNumber: seatId } },
+          });
+        }
+        
+        if (!seatRecord) throw new Error(`Seat ${seatId} does not exist.`);
+        if (seatRecord.isBooked) throw new Error(`Seat ${seatRecord.seatNumber} is already booked.`);
+
+        await tx.seat.update({ where: { id: seatRecord.id }, data: { isBooked: true } });
+
+        const record = await tx.booking.create({
+          data: {
+            flightId,
+            passengerId,
+            seatId: seatRecord.id,
+            status: BookingStatus.CONFIRMED,
+            price: price,
+          },
+        });
+        bookings.push(this.mapRecord(record));
+      }
+      
+      return bookings;
     });
   }
 
@@ -188,22 +225,17 @@ export class BookingService {
     }));
   }
 
-  /** Cancel a booking and free its seat. */
   public async cancel(bookingId: string): Promise<Booking> {
     return await prisma.$transaction(async (tx) => {
       const record = await tx.booking.findUnique({ where: { id: bookingId } });
       if (!record) throw new Error("Booking not found");
-      if (record.status === BookingStatus.CANCELED) {
-        throw new Error("Booking is already canceled");
-      }
+      if (record.status === BookingStatus.CANCELED) throw new Error("Already canceled");
 
-      // Free the seat
       await tx.seat.update({
         where: { id: record.seatId },
         data: { isBooked: false },
       });
 
-      // Update status
       const updated = await tx.booking.update({
         where: { id: bookingId },
         data: { status: BookingStatus.CANCELED },
@@ -213,25 +245,8 @@ export class BookingService {
     });
   }
 
-  /** Permanently delete a booking record. */
   public async delete(id: string): Promise<void> {
     await prisma.booking.delete({ where: { id } });
-  }
-
-  // ── Legacy methods (used internally / backwards compat) ───────────────────
-
-  /** @deprecated Use create() instead. */
-  public async createBooking(
-    flightId: string,
-    passengerId: string,
-    seatId: string
-  ): Promise<Booking> {
-    return this.create(flightId, passengerId, seatId, 0);
-  }
-
-  /** @deprecated Use cancel() instead. */
-  public async cancelBooking(bookingId: string): Promise<void> {
-    await this.cancel(bookingId);
   }
 }
 

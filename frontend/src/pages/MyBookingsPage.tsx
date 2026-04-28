@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { bookingService, Booking } from "../services/bookingService";
+import { 
+  Plane, 
+  Calendar, 
+  MapPin, 
+  ChevronRight, 
+  Ticket, 
+  Clock, 
+  CheckCircle2, 
+  XCircle,
+  AlertCircle
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import type { Booking } from "../services/bookingService";
+import { bookingService } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 const MyBookingsPage: React.FC = () => {

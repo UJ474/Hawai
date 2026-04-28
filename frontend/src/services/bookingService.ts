@@ -50,6 +50,26 @@ export const bookingService = {
     return response.json();
   },
 
+  async createManyBookings(
+    flightId: string,
+    passengerId: string,
+    seats: { seatNumber: string; price: number }[]
+  ): Promise<Booking[]> {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ flightId, passengerId, seats }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Failed to create bookings");
+    }
+    return response.json();
+  },
+
   async getBookingById(id: string): Promise<Booking> {
     const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
       headers: {

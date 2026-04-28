@@ -1,7 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { 
+  CreditCard, 
+  Smartphone, 
+  ShieldCheck, 
+  Lock, 
+  ChevronLeft,
+  Plane,
+  Info,
+  Tag,
+  Shield,
+  HelpCircle,
+  ArrowRight
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { paymentService, PaymentMethod } from "../services/paymentService";
-import { bookingService, Booking } from "../services/bookingService";
+import type { Booking } from "../services/bookingService";
+import { bookingService } from "../services/bookingService";
 import { useAuth } from "../context/AuthContext";
 
 const PAYMENT_METHOD_ICONS: Record<string, string> = {
@@ -18,28 +33,20 @@ const PaymentPage: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  
   const [booking, setBooking] = useState<Booking | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [addInsurance, setAddInsurance] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!isAuthenticated) {
-        setError("Please log in to make a payment.");
-        setLoading(false);
-        return;
-      }
-      if (!bookingId) {
-        setError("Booking ID is missing for payment.");
-        setLoading(false);
-        return;
-      }
-
+      if (!bookingId) return;
       setLoading(true);
-      setError(null);
       try {
         const fetchedBooking = await bookingService.getBookingById(bookingId);
         setBooking(fetchedBooking);
@@ -50,20 +57,22 @@ const PaymentPage: React.FC = () => {
           setSelectedMethod(fetchedMethods[0]);
         }
       } catch (err: any) {
-        setError(err.message || "Failed to load payment page data.");
+        setError(err.message || "Failed to load payment options.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, [bookingId, isAuthenticated]);
+  }, [bookingId]);
+
+  const baseFare = booking?.price || 199;
+  const convenienceFee = 15;
+  const taxes = 30;
+  const insurancePrice = addInsurance ? 25 : 0;
+  const totalAmount = baseFare + convenienceFee + taxes + insurancePrice;
 
   const handleProcessPayment = async () => {
-    if (!booking || !selectedMethod) {
-      setError("Booking or payment method not selected.");
-      return;
-    }
+    if (!booking || !selectedMethod) return;
 
     setProcessingPayment(true);
     setError(null);
@@ -72,11 +81,11 @@ const PaymentPage: React.FC = () => {
       const payment = await paymentService.processPayment(
         booking.bookingId,
         selectedMethod,
-        amount
+        totalAmount
       );
       navigate(`/payment-success/${payment.paymentId}`);
     } catch (err: any) {
-      setError(err.message || "Failed to process payment.");
+      setError(err.message || "Payment processing failed. Please try again.");
     } finally {
       setProcessingPayment(false);
     }
