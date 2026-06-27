@@ -34,7 +34,11 @@ app.use((_req, res) => {
 // Centralized Error Handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`✈  Airline Management API running on http://localhost:${PORT}`);
-  console.log(`   Health check: GET http://localhost:${PORT}/health`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`✈  Airline Management API running on http://localhost:${PORT}`);
+    console.log(`   Health check: GET http://localhost:${PORT}/health`);
+  });
+}
+
+export default app;

@@ -1,6 +1,6 @@
 import { prisma } from "../db.js";
 import { Passenger } from "../models/index.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 
 export class PassengerService {
