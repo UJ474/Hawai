@@ -37,6 +37,7 @@ const FlightDetailPage: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [fareFamily, setFareFamily] = useState<'saver' | 'flexi' | 'premium'>('saver');
 
   useEffect(() => {
     const fetchFlightDetails = async () => {
@@ -55,11 +56,13 @@ const FlightDetailPage: React.FC = () => {
   }, [id]);
 
   const getSeatPrice = (seat: Seat) => {
-    if (seat.seatType === "BUSINESS") return 499;
+    let multiplier = fareFamily === 'premium' ? 1.5 : (fareFamily === 'flexi' ? 1.2 : 1);
+    let base = 199;
+    if (seat.seatType === "BUSINESS") base = 499;
     const row = parseInt(seat.seatNumber);
-    if (row <= 4) return 249;
-    if (row === 6) return 299;
-    return 199;
+    if (row <= 4) base = 249;
+    if (row === 6) base = 299;
+    return Math.round(base * multiplier);
   };
 
   const getSeatLabel = (seat: Seat) => {
@@ -83,9 +86,10 @@ const FlightDetailPage: React.FC = () => {
   };
 
   const totalBaseFare = selectedSeats.reduce((sum, s) => sum + getSeatPrice(s), 0);
+  const fareFamilyAddon = fareFamily === 'flexi' ? selectedSeats.length * 50 : (fareFamily === 'premium' ? selectedSeats.length * 100 : 0);
   const convenienceFee = selectedSeats.length * 15;
   const taxes = selectedSeats.length * 30;
-  const grandTotal = totalBaseFare + convenienceFee + taxes;
+  const grandTotal = totalBaseFare + convenienceFee + taxes + fareFamilyAddon;
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -167,11 +171,42 @@ const FlightDetailPage: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-10">
           
           {/* Seat Map */}
-          <div className="lg:flex-1">
+          <div className="lg:flex-1 space-y-8">
+            
+            {/* Fare Families MMT Style */}
+            <div className="bg-white rounded-3xl shadow-xl p-8 border border-sky/10">
+              <h2 className="text-2xl font-black text-ocean mb-6">Upgrade your Fare</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { id: 'saver', title: 'Saver', price: '+$0', features: ['Cabin Baggage 7kg', 'Check-in Baggage 15kg', 'Cancellation Fee Applies'] },
+                  { id: 'flexi', title: 'Flexi Plus', price: '+$50', features: ['Free Seat Selection', 'Zero Cancellation Fee', 'Free Meals'] },
+                  { id: 'premium', title: 'Super 6E', price: '+$100', features: ['Extra Legroom Seat', 'Priority Boarding', 'No Change Fee'] },
+                ].map(fare => (
+                  <button 
+                    key={fare.id}
+                    onClick={() => setFareFamily(fare.id as any)}
+                    className={`p-5 rounded-2xl border-2 text-left transition-all ${fareFamily === fare.id ? 'border-tropical bg-tropical/5 ring-4 ring-tropical/10 shadow-lg' : 'border-sky/20 hover:border-tropical/40'}`}
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="font-black text-ocean text-lg">{fare.title}</span>
+                      <span className="text-tropical font-black text-xs px-2 py-1 bg-tropical/10 rounded">{fare.price}</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {fare.features.map((f, i) => (
+                        <li key={i} className="text-[10px] font-bold text-rock flex items-center gap-2">
+                          <CheckCircle2 className="w-3 h-3 text-jungle" /> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-white rounded-[4rem] shadow-2xl p-10 md:p-16 border border-sky/10 relative">
-              <div className="flex items-center justify-between mb-16">
+              <div className="flex items-center justify-between mb-12">
                 <div>
-                  <h2 className="text-4xl font-black text-ocean mb-2">Select Seats</h2>
+                  <h2 className="text-3xl font-black text-ocean mb-2">Select Seats</h2>
                   <p className="text-rock font-medium">Flight {flight?.flightNumber} • {selectedSeats.length > 0 ? `${selectedSeats.length} Selected` : "Choose your seat(s)"}</p>
                 </div>
                 <Link to="/flights" className="w-12 h-12 bg-cloud rounded-2xl flex items-center justify-center">
@@ -179,34 +214,55 @@ const FlightDetailPage: React.FC = () => {
                 </Link>
               </div>
 
-              <div className="relative max-w-xl mx-auto bg-[#F8FAFC] rounded-t-[15rem] rounded-b-[6rem] p-16 border-x-[12px] border-t-[12px] border-sky/20">
-                <div className="space-y-4 relative z-10 pt-32 pb-20">
-                  {rows.map((row, rowIdx) => (
-                    <div key={rowIdx} className="flex justify-center gap-3">
-                      {row.map((seat, seatIdx) => {
-                        const isSelected = selectedSeats.find(s => s.seatId === seat.seatId);
-                        const isOccupied = seat.status === "OCCUPIED" || seat.status === "BOOKED";
-                        return (
-                          <React.Fragment key={seat.seatId}>
-                            <button
-                              disabled={isOccupied}
-                              onClick={() => toggleSeatSelection(seat)}
-                              className={`
-                                relative w-11 h-12 md:w-14 md:h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300
-                                ${isOccupied ? "bg-rock/5 cursor-not-allowed text-rock/20" : 
-                                  isSelected ? "bg-sunset text-white shadow-2xl shadow-sunset/40 scale-110 z-20" : 
-                                  "bg-white border-2 border-sky/20 text-ocean hover:border-tropical hover:text-tropical"}
-                              `}
-                            >
-                              <Armchair className={`w-5 h-5 mb-1 ${isOccupied ? "opacity-10" : ""}`} />
-                              <span className="text-[10px] font-black">{seat.seatNumber}</span>
-                            </button>
-                            {seatIdx === 2 && <div className="w-12" />}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                  ))}
+              <div className="relative max-w-2xl mx-auto">
+                {/* Aircraft Body */}
+                <div className="relative bg-[#F8FAFC] rounded-t-[20rem] rounded-b-[10rem] p-8 md:p-16 border-[8px] border-sky/20 shadow-2xl">
+                  {/* Cockpit */}
+                  <div className="absolute top-8 left-1/2 -translate-x-1/2 w-20 h-16 border-4 border-sky/20 rounded-t-[5rem] rounded-b-xl opacity-50" />
+                  
+                  {/* Wings */}
+                  <div className="absolute top-1/3 -left-12 md:-left-24 w-12 md:w-24 h-64 bg-gradient-to-l from-sky/20 to-transparent rounded-l-full -z-10" />
+                  <div className="absolute top-1/3 -right-12 md:-right-24 w-12 md:w-24 h-64 bg-gradient-to-r from-sky/20 to-transparent rounded-r-full -z-10" />
+
+                  <div className="space-y-6 relative z-10 pt-24 pb-10">
+                    {rows.map((row, rowIdx) => {
+                      const isExitRow = rowIdx === 3 || rowIdx === 4;
+                      return (
+                        <div key={rowIdx} className="relative">
+                          {isExitRow && (
+                            <div className="absolute -left-8 md:-left-12 top-1/2 -translate-y-1/2 text-[8px] font-black text-coral uppercase tracking-widest rotate-[-90deg]">Exit</div>
+                          )}
+                          {isExitRow && (
+                            <div className="absolute -right-8 md:-right-12 top-1/2 -translate-y-1/2 text-[8px] font-black text-coral uppercase tracking-widest rotate-90">Exit</div>
+                          )}
+                          <div className="flex justify-center gap-2 md:gap-4">
+                            {row.map((seat, seatIdx) => {
+                              const isSelected = selectedSeats.find(s => s.seatId === seat.seatId);
+                              const isOccupied = seat.status === "OCCUPIED" || seat.status === "BOOKED";
+                              return (
+                                <React.Fragment key={seat.seatId}>
+                                  <button
+                                    disabled={isOccupied}
+                                    onClick={() => toggleSeatSelection(seat)}
+                                    className={`
+                                      relative w-10 h-11 md:w-14 md:h-16 rounded-xl flex flex-col items-center justify-center transition-all duration-300
+                                      ${isOccupied ? "bg-rock/5 cursor-not-allowed text-rock/20" : 
+                                        isSelected ? "bg-sunset text-white shadow-2xl shadow-sunset/40 scale-110 z-20" : 
+                                        "bg-white border-2 border-sky/20 text-ocean hover:border-tropical hover:text-tropical"}
+                                    `}
+                                  >
+                                    <Armchair className={`w-4 h-4 md:w-5 md:h-5 mb-1 ${isOccupied ? "opacity-10" : ""}`} />
+                                    <span className="text-[9px] md:text-[10px] font-black">{seat.seatNumber}</span>
+                                  </button>
+                                  {seatIdx === 2 && <div className="w-8 md:w-12" />}
+                                </React.Fragment>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,7 +400,7 @@ const FlightDetailPage: React.FC = () => {
                       {otp.map((digit, i) => (
                         <input
                           key={i}
-                          ref={el => otpRefs.current[i] = el}
+                          ref={el => { otpRefs.current[i] = el; }}
                           type="text"
                           maxLength={1}
                           className="w-12 h-14 bg-cloud border-none rounded-xl text-center text-xl font-black text-ocean focus:ring-2 focus:ring-tropical/20"

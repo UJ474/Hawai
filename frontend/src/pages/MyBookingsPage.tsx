@@ -21,6 +21,7 @@ const MyBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'UPCOMING' | 'PAST' | 'CANCELLED'>('UPCOMING');
 
   useEffect(() => {
     const fetchMyBookings = async () => {
@@ -45,6 +46,17 @@ const MyBookingsPage: React.FC = () => {
     fetchMyBookings();
   }, [isAuthenticated, user]);
 
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+    try {
+      await bookingService.cancelBooking(bookingId);
+      setBookings(bookings.map(b => b.bookingId === bookingId ? { ...b, status: 'CANCELED' } : b));
+      alert("Booking cancelled successfully and refund initiated.");
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel booking.");
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-cloud flex items-center justify-center p-6">
@@ -65,7 +77,7 @@ const MyBookingsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-cloud pt-32 pb-20">
       <div className="container mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6">
+        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
           <div>
             <h1 className="text-4xl font-black text-ocean mb-2">My Journeys</h1>
             <p className="text-rock font-medium">Manage and view all your flight reservations</p>
@@ -75,6 +87,29 @@ const MyBookingsPage: React.FC = () => {
             Book New Flight
           </Link>
         </div>
+
+        {/* MMT Style Tabs */}
+        {!loading && !error && (
+          <div className="flex gap-2 mb-8 border-b border-sky/10 pb-2 overflow-x-auto">
+            {[
+              { id: 'UPCOMING', label: 'Upcoming' },
+              { id: 'PAST', label: 'Completed' },
+              { id: 'CANCELLED', label: 'Cancelled' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-8 py-3 rounded-t-xl font-black text-sm transition-all whitespace-nowrap ${
+                  activeTab === tab.id 
+                    ? 'bg-white text-ocean border-b-4 border-tropical shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]' 
+                    : 'text-rock hover:text-ocean hover:bg-white/50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -105,7 +140,11 @@ const MyBookingsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             <AnimatePresence mode="popLayout">
-              {bookings.map((booking, idx) => (
+              {bookings.filter(b => {
+                if (activeTab === 'CANCELLED') return b.status === 'CANCELED';
+                if (activeTab === 'PAST') return b.status === 'CONFIRMED'; // MOCK: should check date
+                return b.status === 'CONFIRMED' || b.status === 'PENDING';
+              }).map((booking, idx) => (
                 <motion.div
                   key={booking.bookingId}
                   initial={{ opacity: 0, x: -20 }}
@@ -165,14 +204,24 @@ const MyBookingsPage: React.FC = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="lg:w-48 w-full border-t lg:border-t-0 lg:border-l border-sky/10 pt-6 lg:pt-0 lg:pl-10">
+                    <div className="lg:w-48 w-full border-t lg:border-t-0 lg:border-l border-sky/10 pt-6 lg:pt-0 lg:pl-10 space-y-3">
                       <Link
                         to={`/booking/${booking.bookingId}`}
-                        className="w-full bg-cloud hover:bg-sky text-ocean text-sm font-black py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 group/btn"
+                        className="w-full bg-cloud hover:bg-sky text-ocean text-xs font-black py-3 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 group/btn"
                       >
-                        View Pass
+                        {booking.status === 'CANCELED' ? 'View Details' : 'View Pass'}
                         <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                       </Link>
+                      {booking.status === 'CONFIRMED' && (
+                        <>
+                          <button onClick={() => alert("E-Ticket downloaded!")} className="w-full bg-white border-2 border-ocean/20 hover:bg-ocean hover:border-ocean hover:text-white text-ocean text-xs font-black py-2.5 px-6 rounded-2xl transition-all">
+                            Download E-Ticket
+                          </button>
+                          <button onClick={() => handleCancelBooking(booking.bookingId)} className="w-full bg-white border-2 border-coral/20 hover:bg-coral hover:border-coral hover:text-white text-coral text-xs font-black py-2.5 px-6 rounded-2xl transition-all">
+                            Cancel
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </motion.div>
