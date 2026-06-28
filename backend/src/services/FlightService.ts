@@ -43,6 +43,7 @@ export class FlightService {
     date?: string;
     priceMax?: number;
     timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night';
+    includeSeats?: boolean;
   }): Promise<Flight[]> {
     const where: any = {};
     if (filters?.source) where.source = { contains: filters.source, mode: 'insensitive' };
@@ -69,11 +70,15 @@ export class FlightService {
 
     let records = await prisma.flight.findMany({ 
       where, 
-      include: { 
-        seats: {
-          orderBy: { seatNumber: 'asc' }
-        } 
-      } 
+      ...(filters?.includeSeats
+        ? {
+            include: {
+              seats: {
+                orderBy: { seatNumber: 'asc' },
+              },
+            },
+          }
+        : {}),
     });
 
     // In-memory filtering for more complex logic

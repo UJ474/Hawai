@@ -41,7 +41,11 @@ router.post("/", async (req, res, next) => {
 
     const bookings = await bookingService.createMany(flightId, passengerId, seatNumbers, prices);
     res.status(201).json(bookings);
-  } catch (err) {
+  } catch (err: any) {
+    if (err.message && (err.message.includes("already booked") || err.message.includes("does not exist"))) {
+      res.status(409).json({ error: "Conflict", message: err.message });
+      return;
+    }
     next(err);
   }
 });

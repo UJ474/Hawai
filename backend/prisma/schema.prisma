@@ -36,6 +36,9 @@ model Flight {
   status        String    @default("SCHEDULED")
   seats         Seat[]
   bookings      Booking[]
+
+  @@index([source, destination, departureTime])
+  @@index([status])
 }
 
 model Seat {
@@ -48,6 +51,7 @@ model Seat {
   bookings   Booking[]
 
   @@unique([flightId, seatNumber])
+  @@index([flightId, isBooked])
 }
 
 model Booking {
@@ -62,6 +66,10 @@ model Booking {
   status      String    @default("PENDING")
   payment     Payment?
   createdAt   DateTime  @default(now())
+
+  @@index([passengerId])
+  @@index([flightId])
+  @@index([status])
 }
 
 model Payment {

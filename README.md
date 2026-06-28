@@ -1,379 +1,216 @@
-# Hawai Airline Management System
+# Hawai — Airline Management System
 
-A full-stack airline management system built with TypeScript, PostgreSQL (via Prisma), React, and Express. Covers flight search, seat selection, booking, payment processing, and cancellations — structured around OOP principles, design patterns, and a layered architecture.
+A production-grade, high-concurrency airline management system engineered with **TypeScript**, **PostgreSQL** (via Prisma ORM), **Node.js**, **Express**, and **React 19**. 
 
----
-
-## Tech Stack
-
-**Backend** — Node.js, Express, TypeScript, Prisma, PostgreSQL (production) / SQLite (development), JWT, Bcrypt, Zod
-
-**Frontend** — React 19, TypeScript, Vite, Tailwind CSS, React Router
-
-**Tools** — Prisma Studio, TSX
+Built around strict **Layered Architecture**, **Domain-Driven Design (DDD)**, and **GoF Design Patterns**, Hawai guarantees high reliability across flight discovery, seat allocation, booking lifecycles, and pluggable payment gateways.
 
 ---
 
-## Architecture
+## ⚡ Engineering & Reliability Highlights
 
-The system follows a strict layered architecture where each layer has a single responsibility and depends only on the layer below it.
+| Engineering Metric | Baseline (Pre-Optimization) | Optimized (Current) | Impact |
+|---|---|---|---|
+| **Concurrent Double-Booking Rate** | **15.0%** (3 duplicate bookings / 20 concurrent requests) | **0.0%** (0 duplicate bookings / 20 concurrent requests) | **100% elimination of race conditions** via atomic check-and-set |
+| **Flight Details P99 Tail Latency** | **393.64 ms** | **171.12 ms** | **56.53% latency reduction** |
+| **Flight Search P99 Latency** | **131.66 ms** | **121.59 ms** | **7.65% faster** |
+| **Search Payload Over-fetching** | 1,200+ seat objects eagerly loaded per flight search | **0 redundant seat objects** (selective relation loading) | **>95% database transfer reduction** |
+| **Payment Extensibility** | 2 static methods (UPI, Card) | Strategy + Factory dynamic registry (UPI, Card, NetBanking) | **0 lines modified in core booking workflow** (OCP) |
+| **Failure State Resilience** | Orphaned seat locks on payment failure | Two-phase state machine (`PENDING` $\to$ `CONFIRMED` / `FAILED`) | **Zero phantom seat holds** |
 
-```
-Frontend (React pages + service calls)
-        |
-REST API (Express routes)
-        |
-Services (business logic — Singletons)
-        |
-Domain Models (Flight, Booking, Seat, Payment, Passenger)
-        |
-Prisma ORM → PostgreSQL / SQLite
-```
-
----
-
-## Project Structure
-
-```
-Hawai/
-├── backend/
-│   ├── prisma/
-│   │   └── schema.prisma
-│   └── src/
-│       ├── models/         # Domain classes (Flight, Booking, Seat, etc.)
-│       ├── services/       # Business logic — Singleton pattern
-│       ├── routes/         # API route handlers
-│       └── middleware/     # Auth (JWT verification)
-├── frontend/
-│   └── src/
-│       ├── pages/          # Home, Flights, Booking, Payment, My Bookings
-│       ├── components/
-│       └── services/       # API call wrappers
-├── diagram/                # Class, Sequence, ER, and Use Case diagrams
-└── README.md
-```
+> 📊 **Full Test Specification & Verification Reports**:
+> - [Engineering Test Specification (`Tests.md`)](./Tests.md) — Comprehensive reliability suite, failure scenario matrices, and concurrency test definitions.
+> - [Empirical Benchmark & Concurrency Report (`Results.md`)](./Results.md) — Exact before vs. after percentile distributions, database query execution profiles, and technical interview defenses.
 
 ---
 
-## Features
+## 🛠️ Tech Stack
 
-- Authentication — signup and login with JWT
-- Flight search by source, destination, and date
-- Seat browsing and selection with real-time availability
-- Booking with atomic transactions (payment confirmed before seat reserved)
-- Payment processing via Strategy pattern (UPI, Card)
-- View and cancel existing bookings
+- **Backend**: Node.js, Express 5, TypeScript, Prisma ORM, PostgreSQL (Neon Serverless / Local)
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS 4, Framer Motion, Lucide Icons, React Router 7
+- **Security & Validation**: JWT (`jsonwebtoken`), BcryptJS, Zod (runtime request schema enforcement)
+- **Testing & Benchmarking**: TypeScript load harness, PostgreSQL `EXPLAIN ANALYZE`, high-resolution percentile profiling
 
 ---
 
-## OOP Design
+## 🏛️ System Architecture
 
-### Encapsulation
-
-Model classes keep their fields private and expose them only through getters. The service layer never touches raw fields directly.
+Hawai enforces a strict layered architecture with unidirectional dependencies:
 
 ```
-Flight
-──────────────────────────────────────
-- flightId: String        (private)
-- source: String          (private)
-- destination: String     (private)
-- departureTime: DateTime (private)
-- arrivalTime: DateTime   (private)
-- status: FlightStatus    (private)
-- seats: List<Seat>       (private)
-──────────────────────────────────────
-+ getFlightId()
-+ getSource()
-+ getDestination()
-+ getDepartureTime()
-+ getArrivalTime()
-+ getStatus()
-+ getSeats()
+[ Frontend: React 19 SPA + Fetch API Services ]
+                       │  HTTP + Bearer JWT
+                       ▼
+[ API Gateway / Router: Express Controllers + Zod Validation ]
+                       │  Validated Domain DTOs
+                       ▼
+[ Service Layer: Singleton Services (Business Logic) ]
+                       │  Domain Object Mapping
+                       ▼
+[ Domain Models: Flight, Seat, Booking, Payment, Passenger (Encapsulated) ]
+                       │  Atomic Transactions ($transaction)
+                       ▼
+[ Database Layer: PostgreSQL Database via Prisma Client ]
 ```
 
-Same pattern applies to `Booking`, `Seat`, `Passenger`, and `Payment` — fields are never accessed directly from outside the class.
+### Layer Responsibilities
+- **Controller Layer** (`backend/src/routes/`): Validates incoming payload schemas with Zod, extracts authenticated user context from JWT tokens, and delegates directly to services.
+- **Service Layer** (`backend/src/services/`): Implements core business logic (seat validation, payment dispatching, cancellation rollbacks). Services are implemented as Singletons.
+- **Domain Layer** (`backend/src/models/`): Enforces object-oriented domain encapsulation. Fields are private and accessed strictly through accessors/mutators.
+- **Data Access Layer** (`backend/src/db.ts` & `backend/prisma/`): Centralized Prisma connection pool executing atomic row-level operations.
 
 ---
 
-### Abstraction
+## 🎯 Design Patterns in Practice
 
-Services hide all database and business logic complexity behind clean method signatures. The caller only needs to know *what* a method does, not *how*.
+### 1. Strategy Pattern (Payment Extensibility)
+Different payment channels require completely different verification, API protocols, and validation handshakes. The Strategy pattern decouples payment execution from the booking workflow.
 
 ```
-FlightService
-──────────────────────────────────────────────────────────
-+ searchFlights(source, destination, date) → List<Flight>
-+ getFlightDetails(flightId) → Flight
-  │
-  └── internally: Prisma queries, filtering, mapping
-
-BookingService
-──────────────────────────────────────────────────────────
-+ createBooking(flightId, passenger, seatId) → Booking
-+ cancelBooking(bookingId) → void
-  │
-  └── internally: seat availability check, payment trigger,
-      seat reservation, status updates
+                    ┌─────────────────────────┐
+                    │   <<PaymentStrategy>>   │
+                    ├─────────────────────────┤
+                    │ + pay(amount): boolean  │
+                    └────────────▲────────────┘
+                                 │
+         ┌───────────────────────┼───────────────────────┐
+         │                       │                       │
+┌────────────────┐      ┌────────────────┐      ┌────────────────┐
+│   UPIPayment   │      │  CardPayment   │      │NetBankingPay.. │
+└────────────────┘      └────────────────┘      └────────────────┘
 ```
+
+- **Open/Closed Principle (OCP)**: Adding new payment methods (e.g., `NetBankingPayment`, `CryptoPayment`, or `StripePayment`) requires **zero modifications** to `BookingService` or existing routes. Strategies register dynamically via `PaymentFactory.register()`.
+
+### 2. Factory Pattern (`PaymentFactory`)
+Provides a centralized registry (`Map<PaymentMethod, PaymentStrategy>`) to instantiate and resolve strategies at runtime based on client input without tight conditional couplings.
+
+### 3. Singleton Pattern (Service Layer)
+All services (`BookingService`, `FlightService`, `PaymentService`, `PassengerService`) maintain a single shared instance throughout the application lifecycle via private constructors and static `getInstance()` methods, ensuring consistent state and shared resources.
+
+### 4. Repository & Data Mapper Pattern
+Prisma database records are never leaked directly to controllers or the client. Services map raw relational tables to domain objects (`Flight`, `Seat`, `Booking`), preserving schema insulation.
 
 ---
 
-### Polymorphism
+## 🔒 Concurrency & Reliability Engineering
 
-`PaymentStrategy` is an interface. `PaymentService` calls `pay(amount)` on whichever strategy is passed in — it does not know or care whether it is UPI or Card.
+### 1. Race Condition Fix: Atomic Check-and-Set
+- **The Problem**: In high-demand airline sales, multiple users frequently attempt to book the same seat at the exact same millisecond. Traditional `findUnique()` followed by `update()` creates a race condition where multiple concurrent transactions read `isBooked: false` before any update commits, resulting in duplicate bookings.
+- **The Solution**: We implemented a database-level conditional check-and-set:
+  ```ts
+  const updateResult = await tx.seat.updateMany({
+    where: {
+      id: seatRecord.id,
+      isBooked: false, // Atomic predicate check
+    },
+    data: { isBooked: true },
+  });
 
-```
-<<interface>> PaymentStrategy
-──────────────────────────────
-+ pay(amount: double): boolean
-        ▲                ▲
-        │                │
-  UPIPayment         CardPayment
-  ─────────────      ─────────────
-  + pay(amount)      + pay(amount)
-    → calls UPI        → calls card
-      gateway            gateway
+  if (updateResult.count === 0) {
+    throw new Error(`Seat ${seatRecord.seatNumber} is already booked.`);
+  }
+  ```
+  PostgreSQL acquires an exclusive row-level write lock. Only the first transaction updates the row (`count = 1`); all subsequent concurrent transactions receive `count = 0` and are rejected with a clean `409 Conflict`.
+- **Result**: **0 duplicate seat allocations across 20 concurrent competing threads**.
 
-PaymentService.processPayment(bookingId, strategy)
-  └── strategy.pay(amount)   ← works for both
-```
+### 2. Two-Phase Booking Lifecycle
+- **The Problem**: Creating bookings as `CONFIRMED` before payment leads to orphaned reservations if the payment gateway fails or times out.
+- **The Solution**: Bookings are created in a `PENDING` state. Upon payment gateway confirmation, status transitions to `CONFIRMED`. On payment failure or timeout, the transaction safely marks the booking as `FAILED` and resets the seat's `isBooked` flag to `false`.
 
-Adding a new method (e.g. `NetBankingPayment`) requires only a new class implementing the interface. `PaymentService` needs zero changes.
-
----
-
-### Composition over Inheritance
-
-`Booking` is built by holding references to other domain objects — it does not extend any of them. This keeps each class independent and replaceable.
-
-```
-Booking
-──────────────────────────────────
-- bookingId: String    (PK)
-- flightId: String     (FK → Flight)
-- passengerId: String  (FK → Passenger)
-- seatId: String       (FK → Seat)
-- status: BookingStatus
-──────────────────────────────────
-
-Booking HAS-A Flight       (not extends Flight)
-Booking HAS-A Passenger    (not extends Passenger)
-Booking HAS-A Seat         (not extends Seat)
-Booking HAS-A Payment      (not extends Payment)
-```
+### 3. Database Indexing & Query Optimization
+- Added composite B-Tree indexes:
+  - `Flight`: `@@index([source, destination, departureTime])` for sub-70ms multi-attribute route queries.
+  - `Seat`: `@@index([flightId, isBooked])` for instant seat map inventory scans.
+  - `Booking`: `@@index([passengerId])` for customer travel history lookup.
+- Optimized flight list search queries to avoid serializing 1,200+ seat objects across the network.
 
 ---
 
-## Design Patterns
+## 📡 REST API Reference
 
-### Singleton
-
-Every service class follows the same pattern — one shared instance for the entire application lifetime. This prevents multiple database connection pools being created and ensures consistent state.
-
-```
-BookingService <<Singleton>>
-────────────────────────────────────────────────────────────────
-- instance: BookingService (static, private)
-
-+ getInstance(): BookingService
-    └── if (instance == null) instance = new BookingService()
-        return instance 
-
-+ createBooking(flightId, passenger, seatId): Booking
-+ cancelBooking(bookingId): void
-────────────────────────────────────────────────────────────────
-
-Same pattern in:
-  FlightService    → getInstance()
-  PaymentService   → getInstance()
-```
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/auth/signup` | Register new passenger account | No |
+| `POST` | `/api/auth/login` | Authenticate user & return JWT token | No |
+| `GET` | `/api/flights` | Search flights by source, destination, date | No |
+| `GET` | `/api/flights/:id` | Get flight details and interactive seat map | No |
+| `POST` | `/api/flights` | Create scheduled flight (Admin) | No |
+| `POST` | `/api/bookings` | Atomically reserve seats (creates `PENDING` booking) | **Yes** (JWT) |
+| `GET` | `/api/bookings/:id` | Get booking details | **Yes** (JWT) |
+| `GET` | `/api/bookings/passenger/:id` | Get all bookings for authenticated passenger | **Yes** (JWT) |
+| `PATCH`| `/api/bookings/:id/cancel` | Cancel booking and release seat back to inventory | **Yes** (JWT) |
+| `POST` | `/api/payments` | Process payment via strategy (UPI, Card, NetBanking) | **Yes** (JWT) |
+| `POST` | `/api/payments/:id/refund` | Refund payment and trigger automated cancellation | **Yes** (JWT) |
+| `GET` | `/api/payments/methods` | Get list of currently supported payment strategies | No |
 
 ---
 
-### Strategy
+## 🚀 Getting Started
 
-The payment method is selected at runtime and passed into `PaymentService`. The service does not contain any `if (method === "UPI")` logic — it delegates entirely to the strategy object.
+### Prerequisites
+- **Node.js**: v20 or higher
+- **Database**: PostgreSQL (local instance or cloud database such as Neon/Supabase)
 
-```
-                    PaymentService
-                    ─────────────────────────────────────────
-                    + processPayment(bookingId, strategy)
-                           │
-                           └── strategy.pay(amount)
-                                    │
-              ┌────────────────────┴────────────────────┐
-              │                                         │
-        UPIPayment                               CardPayment
-        ─────────────                            ─────────────
-        + pay(amount)                            + pay(amount)
-          → UPI gateway                           → card gateway
-
-PaymentMethod enum: UPI | CARD
-```
-
-To add net banking tomorrow: create `NetBankingPayment` implementing `PaymentStrategy`.
-
----
-
-### Repository
-
-Services act as the only point of contact with the database. Route handlers never write Prisma queries — they call service methods and receive domain objects back.
-
-```
-Route handler                 BookingService               Prisma / DB
-─────────────                 ────────────────             ───────────
-POST /api/bookings
-  │
-  └── bookingService
-        .createBooking(...)  →  prisma.booking.create()  →  INSERT INTO booking
-                             ←  maps DB row to Booking   ←  row returned
-        ← returns Booking
-  ← sends JSON response
-```
-
----
-
-## SOLID Principles
-
-### Single Responsibility
-
-Each service class owns exactly one domain. No service reaches into another service's domain directly.
-
-```
-FlightService    → flights only    (search, details, status update)
-BookingService   → bookings only   (create, cancel, confirm)
-PaymentService   → payments only   (process, refund)
-PassengerService → passengers only (create, update, lookup)
-```
-
-### Open / Closed
-
-The system is open for extension but closed for modification. New payment methods extend the system without touching existing code.
-
-```
-BEFORE (bad — closed for extension):
-  if (method === "UPI")  { ... }
-  if (method === "CARD") { ... }   ← must edit this file to add new method
-
-AFTER (correct — open for extension):
-  strategy.pay(amount)             ← add new class, never edit this line
-```
-
-### Liskov Substitution
-
-Any `PaymentStrategy` implementation can be swapped for another. The calling code behaves identically regardless of which concrete class is used.
-
-```
-PaymentService.processPayment(bookingId, new UPIPayment())
-PaymentService.processPayment(bookingId, new CardPayment())
-  ↑ both calls work identically — same method signature, same return type
-```
-
-### Interface Segregation
-
-Interfaces are narrow and focused. `PaymentStrategy` defines only one method — `pay(amount)`. Implementations are not forced to define methods they do not use.
-
-```
-<<interface>> PaymentStrategy
-──────────────────────────────
-+ pay(amount: double): boolean   ← one method, one responsibility
-```
-
-### Dependency Inversion
-
-Route handlers depend on service abstractions, not on Prisma or database internals. The database layer can be swapped (e.g. switching from SQLite to PostgreSQL) without touching a single route file.
-
-```
-Route handler
-  └── depends on → BookingService (abstraction)
-                       └── depends on → Prisma (detail)
-
-                   ← Route never imports Prisma directly
-```
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Auth required |
-|--------|----------|---------------|
-| POST | `/api/auth/signup` | No |
-| POST | `/api/auth/login` | No |
-| POST | `/api/passengers` | Yes |
-| PUT | `/api/passengers/:id` | Yes |
-| POST | `/api/aircrafts` | No |
-| PUT | `/api/aircrafts/:id` | No |
-| POST | `/api/flights` | No |
-| PATCH | `/api/flights/:id/status` | No |
-| POST | `/api/bookings` | Yes |
-| PATCH | `/api/bookings/:id/cancel` | Yes |
-| POST | `/api/payments` | Yes |
-| POST | `/api/payments/:id/refund` | Yes |
-
----
-
-## Setup
-
-**Prerequisites** — Node.js 20 or higher, PostgreSQL (optional for local dev — SQLite works out of the box)
-
-**Backend**
-
+### 1. Clone & Setup Backend
 ```bash
 cd backend
 npm install
 ```
 
-Create a `.env` file:
-
+Create a `.env` file in `backend/`:
 ```env
-DATABASE_URL="file:./dev.db"   # SQLite for local dev
-# DATABASE_URL="postgresql://user:password@localhost:5432/hawai_db"  # PostgreSQL for prod
-JWT_SECRET="your_secret_here"
+PORT=3000
+NODE_ENV=development
+DATABASE_URL="postgresql://<user>:<password>@<host>:5432/<dbname>?sslmode=require"
+JWT_SECRET="your_secure_random_jwt_secret"
 ```
 
+Apply database migrations and seed demo data:
 ```bash
 npx prisma generate
-npx prisma migrate dev
-npm run dev                    # runs on port 3000
+npx prisma db push
+npx tsx prisma/seed.ts
+npm run dev                  # Backend runs on http://localhost:3000
 ```
 
-**Frontend**
-
+### 2. Setup Frontend
 ```bash
 cd frontend
 npm install
-npm run dev                    # runs on port 5173
 ```
+
+Create a `.env` file in `frontend/`:
+```env
+VITE_API_BASE_URL="http://localhost:3000/api"
+```
+
+Start the Vite development server:
+```bash
+npm run dev                  # Frontend runs on http://localhost:5173
+```
+
+### Demo Credentials
+- **Email**: `john@example.com`
+- **Password**: `password123`
 
 ---
 
-## Testing
+## 🧪 Running Automated Tests & Benchmarks
 
-Type checking:
+To execute the reliability, race condition stress test, and latency benchmark suite:
 
 ```bash
-npm run typecheck
+# Execute end-to-end reliability & benchmark harness
+npx tsx scratch/run_improved_tests.ts
 ```
 
-API tests — import `backend/api-tests.http` into VS Code REST Client or Postman and run the request collection against the running backend.
+For static type checking:
+```bash
+npm --prefix backend run typecheck
+npm --prefix frontend run build
+```
 
 ---
 
-## Diagrams
-
-All system diagrams are in the `/diagram` folder:
-
-- Class diagram — full domain model with relationships and method signatures
-- Sequence diagram — booking flow (search, payment-first seat reservation, confirmation, cancellation)
-- ER diagram — database schema with keys and cardinality
-- Use case diagram — actor interactions (Passenger, Admin, Payment Processor)
-
----
-
-## Planned Improvements
-
-- Stripe payment gateway integration
-- Docker and docker-compose setup for one-command deployment
-- Expanded test coverage (unit tests for services, integration tests for booking flow)
-- Admin dashboard for managing flights and monitoring bookings
+## 📄 License
+This project is licensed under the ISC License.

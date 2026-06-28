@@ -54,16 +54,26 @@ export class BookingService {
         }
         
         if (!seatRecord) throw new Error(`Seat ${seatId} does not exist.`);
-        if (seatRecord.isBooked) throw new Error(`Seat ${seatRecord.seatNumber} is already booked.`);
 
-        await tx.seat.update({ where: { id: seatRecord.id }, data: { isBooked: true } });
+        // Atomic Check-and-Set: Exclusively lock and acquire the seat only if isBooked is false
+        const updateResult = await tx.seat.updateMany({
+          where: {
+            id: seatRecord.id,
+            isBooked: false,
+          },
+          data: { isBooked: true },
+        });
+
+        if (updateResult.count === 0) {
+          throw new Error(`Seat ${seatRecord.seatNumber} is already booked.`);
+        }
 
         const record = await tx.booking.create({
           data: {
             flightId,
             passengerId,
             seatId: seatRecord.id,
-            status: BookingStatus.CONFIRMED,
+            status: BookingStatus.PENDING,
             price: price,
           },
         });

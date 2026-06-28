@@ -18,6 +18,7 @@ const flightQuerySchema = z.object({
   date: z.string().optional(),
   priceMax: z.string().transform(Number).optional(),
   timeOfDay: z.enum(['morning', 'afternoon', 'evening', 'night']).optional(),
+  includeSeats: z.string().transform((val) => val === "true").optional(),
 });
 
 router.get("/", async (req, res, next) => {

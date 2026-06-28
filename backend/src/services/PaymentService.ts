@@ -42,6 +42,10 @@ export class PaymentService {
         throw new Error("Booking is already paid for");
       }
 
+      if (bookingRecord.status === "CANCELED") {
+        throw new Error("Cannot pay for a canceled booking");
+      }
+
       // 2. Strategy Selection via Factory
       const strategy = PaymentFactory.createStrategy(method);
 
@@ -57,6 +61,15 @@ export class PaymentService {
 
       const isSuccess = paymentModel.processPayment(strategy);
       if (!isSuccess) {
+        // Release seat and mark booking failed
+        await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: "FAILED" },
+        });
+        await tx.seat.update({
+          where: { id: bookingRecord.seatId },
+          data: { isBooked: false },
+        });
         throw new Error("Payment gateway rejected the transaction");
       }
 

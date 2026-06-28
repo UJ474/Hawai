@@ -8,6 +8,7 @@ export enum PaymentStatus {
 export enum PaymentMethod {
   UPI = "UPI",
   CARD = "CARD",
+  NETBANKING = "NETBANKING",
 }
 
 export interface PaymentStrategy {
@@ -24,6 +25,13 @@ export class UPIPayment implements PaymentStrategy {
 export class CardPayment implements PaymentStrategy {
   public pay(amount: number): boolean {
     console.log(`[Card] Processing payment of ₹${amount} via Payment Gateway (Stripe/Razorpay)...`);
+    return true;
+  }
+}
+
+export class NetBankingPayment implements PaymentStrategy {
+  public pay(amount: number): boolean {
+    console.log(`[NetBanking] Processing payment of ₹${amount} via Net Banking Gateway...`);
     return true;
   }
 }
@@ -47,6 +55,7 @@ export class PaymentFactory {
 // Register all supported strategies at module load time
 PaymentFactory.register(PaymentMethod.UPI, new UPIPayment());
 PaymentFactory.register(PaymentMethod.CARD, new CardPayment());
+PaymentFactory.register(PaymentMethod.NETBANKING, new NetBankingPayment());
 
 export class Payment {
   private paymentId: string;
