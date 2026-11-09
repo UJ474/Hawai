@@ -6,7 +6,7 @@ Built around strict **Layered Architecture**, **Domain-Driven Design (DDD)**, an
 
 ---
 
-## ⚡ Engineering & Reliability Highlights
+## Engineering & Reliability Highlights
 
 | Engineering Metric | Baseline (Pre-Optimization) | Optimized (Current) | Impact |
 |---|---|---|---|
@@ -17,13 +17,13 @@ Built around strict **Layered Architecture**, **Domain-Driven Design (DDD)**, an
 | **Payment Extensibility** | 2 static methods (UPI, Card) | Strategy + Factory dynamic registry (UPI, Card, NetBanking) | **0 lines modified in core booking workflow** (OCP) |
 | **Failure State Resilience** | Orphaned seat locks on payment failure | Two-phase state machine (`PENDING` $\to$ `CONFIRMED` / `FAILED`) | **Zero phantom seat holds** |
 
-> 📊 **Full Test Specification & Verification Reports**:
+> **Full Test Specification & Verification Reports**:
 > - [Engineering Test Specification (`Tests.md`)](./Tests.md) — Comprehensive reliability suite, failure scenario matrices, and concurrency test definitions.
 > - [Empirical Benchmark & Concurrency Report (`Results.md`)](./Results.md) — Exact before vs. after percentile distributions, database query execution profiles, and technical interview defenses.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Backend**: Node.js, Express 5, TypeScript, Prisma ORM, PostgreSQL (Neon Serverless / Local)
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS 4, Framer Motion, Lucide Icons, React Router 7
@@ -32,7 +32,7 @@ Built around strict **Layered Architecture**, **Domain-Driven Design (DDD)**, an
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 Hawai enforces a strict layered architecture with unidirectional dependencies:
 
@@ -60,7 +60,7 @@ Hawai enforces a strict layered architecture with unidirectional dependencies:
 
 ---
 
-## 🎯 Design Patterns in Practice
+## Design Patterns in Practice
 
 ### 1. Strategy Pattern (Payment Extensibility)
 Different payment channels require completely different verification, API protocols, and validation handshakes. The Strategy pattern decouples payment execution from the booking workflow.
@@ -92,7 +92,7 @@ Prisma database records are never leaked directly to controllers or the client. 
 
 ---
 
-## 🔒 Concurrency & Reliability Engineering
+## Concurrency & Reliability Engineering
 
 ### 1. Race Condition Fix: Atomic Check-and-Set
 - **The Problem**: In high-demand airline sales, multiple users frequently attempt to book the same seat at the exact same millisecond. Traditional `findUnique()` followed by `update()` creates a race condition where multiple concurrent transactions read `isBooked: false` before any update commits, resulting in duplicate bookings.
@@ -126,7 +126,7 @@ Prisma database records are never leaked directly to controllers or the client. 
 
 ---
 
-## 📡 REST API Reference
+## REST API Reference
 
 | Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
@@ -145,7 +145,7 @@ Prisma database records are never leaked directly to controllers or the client. 
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Node.js**: v20 or higher
@@ -195,7 +195,7 @@ npm run dev                  # Frontend runs on http://localhost:5173
 
 ---
 
-## 🧪 Running Automated Tests & Benchmarks
+## Running Automated Tests & Benchmarks
 
 To execute the reliability, race condition stress test, and latency benchmark suite:
 
@@ -212,5 +212,5 @@ npm --prefix frontend run build
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the ISC License.
